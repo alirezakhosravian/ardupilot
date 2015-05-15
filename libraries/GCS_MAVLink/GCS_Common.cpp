@@ -219,7 +219,7 @@ void GCS_MAVLINK::send_ahrs2(AP_AHRS &ahrs)
 #if AP_AHRS_NAVEKF_AVAILABLE
     Vector3f euler;
     struct Location loc;
-    if (ahrs.get_secondary_attitude(euler) && ahrs.get_secondary_position(loc)) {
+    if (ahrs.get_secondary_attitude(euler, 0) && ahrs.get_secondary_position(loc, 0)) {
         mavlink_msg_ahrs2_send(chan,
                                euler.x,
                                euler.y,
@@ -227,6 +227,29 @@ void GCS_MAVLINK::send_ahrs2(AP_AHRS &ahrs)
                                loc.alt*1.0e-2f,
                                loc.lat,
                                loc.lng);
+    }
+#endif
+}
+
+// report AHRS3 state
+void GCS_MAVLINK::send_ahrs3(AP_AHRS &ahrs)
+{
+#if AP_AHRS_NAVEKF_AVAILABLE
+    Vector3f euler;
+    struct Location loc;
+    if (ahrs.get_secondary_attitude(euler, 1) && ahrs.get_secondary_position(loc, 1)) {
+        float v1 = 0;
+        float v2 = 0;
+        float v3 = 0;
+        float v4 = 0;
+        mavlink_msg_ahrs3_send(chan,
+                               euler.x,
+                               euler.y,
+                               euler.z,
+                               loc.alt*1.0e-2f,
+                               loc.lat,
+                               loc.lng,
+                               v1, v2, v3, v4);
     }
 #endif
 }

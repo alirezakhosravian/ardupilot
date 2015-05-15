@@ -50,10 +50,6 @@
 #define AP_AHRS_RP_P_MIN   0.05f        // minimum value for AHRS_RP_P parameter
 #define AP_AHRS_YAW_P_MIN  0.05f        // minimum value for AHRS_YAW_P parameter
 
-#define EKF_DO_NOT_USE            0     // Prevents the EKF from being used by the flight controllers
-#define EKF_USE_WITH_FALLBACK     1     // Uses the EKF unless its solution is unhealthy or not initialised. This allows sensor errors to cause reversion.
-#define EKF_USE_WITHOUT_FALLBACK  2     // Uses the EKF unless it encounters numerical processing errors or isn't iniitalised. Sensor errors will not cause reversion.
-
 enum AHRS_VehicleClass {
     AHRS_VEHICLE_UNKNOWN,
     AHRS_VEHICLE_GROUND,
@@ -331,10 +327,10 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
     // return secondary attitude solution if available, as eulers in radians
-    virtual bool get_secondary_attitude(Vector3f &eulers) { return false; }
+    virtual bool get_secondary_attitude(Vector3f &eulers, uint8_t instance = 0) { return false; }
 
     // return secondary position solution if available
-    virtual bool get_secondary_position(struct Location &loc) { return false; }
+    virtual bool get_secondary_position(struct Location &loc, uint8_t instance = 0) { return false; }
 
     // get the home location. This is const to prevent any changes to
     // home without telling AHRS about the change    

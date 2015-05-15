@@ -5,8 +5,8 @@
 #include <AP_Param.h>
 #include <vectorN.h>
 
-#define BUFFER_SIZE  200    //buffer size for sensors
-#define MAX_MSDELAY  2000   // maximum allowed delay
+#define BUFFER_SIZE  50   //  buffer size for sensors, this allows buffering of at least BUFFER_SIZE*20 ms=MAX_MSDELAY of data
+#define MAX_MSDELAY  BUFFER_SIZE*20   // maximum allowed delay
 
 class AP_Predictors
 {
@@ -22,9 +22,9 @@ public:
     void PositionPredictor(Vector3f position);
     void PositionPredictor2(Vector3f position);
     void VelocityPredictor(Vector3f velocity);
-    void VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecPosDelay);
-    void CascadedPredictor(Vector3f tilde_q, Vector3f tilde_Vel, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, AP_Int16 _msecPosDelay, Vector3f velocity, Vector3f position);
-    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecPosDelay);
+    void VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecTauDelay);
+    void CascadedPredictor(Vector3f tilde_q, Vector3f tilde_Vel, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, AP_Int16 _msecTauDelay, Vector3f velocity, Vector3f position);
+    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTauDelay);
     void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
     void storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
     void getAttitudePrediction(Quaternion &att);

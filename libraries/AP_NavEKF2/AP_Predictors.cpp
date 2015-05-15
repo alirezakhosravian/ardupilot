@@ -87,7 +87,7 @@ void AP_Predictors::storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUF
     }
 }
 
-void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecPosDelay)
+void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTauDelay)
 {
     uint32_t time_delta;
     closestTime = MAX_MSDELAY;
@@ -95,8 +95,8 @@ void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex
 
     for (int i=0; i<=(BUFFER_SIZE-1); i++)
     {
-        time_delta = abs( (imuSampleTime_ms - timeStamp[i]) - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY));
-        //       printf("%u \n",_msecPosDelay);
+        time_delta = abs( (imuSampleTime_ms - timeStamp[i]) - constrain_int16(_msecTauDelay, 0, MAX_MSDELAY));
+        //       printf("%u \n",_msecTauDelay);
         if (time_delta < closestTime)
         {
             closestStoreIndex = i;
@@ -206,7 +206,7 @@ void AP_Predictors::VelocityModel2(Vector3f corrected_tilde_Vel12)
     }
 }
 
-void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecPosDelay)
+void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecTauDelay)
 {
 // picking up the delayed d_v
     Vector3f d_v_m_Delay=storedd_v_m[bestStoreIndexd_v_m];
@@ -228,7 +228,7 @@ void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_In
     q_tmp_m.rotation_matrix(Tbn_temp);
 
 // v_hat_m mixed-invariant
-    v_hat_m = velocity + gravityNED*(0.001f*constrain_int16(_msecPosDelay, 0, MAX_MSDELAY))+Tbn_temp*(d_v_m- d_v_m_Delay);
+    v_hat_m = velocity + gravityNED*(0.001f*constrain_int16(_msecTauDelay, 0, MAX_MSDELAY))+Tbn_temp*(d_v_m- d_v_m_Delay);
 }
 
 void AP_Predictors::getAttitudePrediction(Quaternion &att)
@@ -256,23 +256,23 @@ void AP_Predictors::getVelocity2Prediction(Vector3f &vel)
     vel = v_hat_m;
 }
 
-void AP_Predictors::CascadedPredictor(Vector3f tilde_q, Vector3f tilde_Vel, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, AP_Int16 _msecPosDelay, Vector3f velocity, Vector3f position)
+void AP_Predictors::CascadedPredictor(Vector3f tilde_q, Vector3f tilde_Vel, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, AP_Int16 _msecTauDelay, Vector3f velocity, Vector3f position)
 {
     AttitudeModel(tilde_q);
     VelocityModel(tilde_Vel);
     VelocityModel2(corrected_tilde_Vel12);
     PositionModel(dtIMU);
     PositionModel2(dtIMU);
-    //BestIndex(_msecPosDelay);
-    BestIndex(bestTimeD, bestStoreIndexD, DTimeStamp, _msecPosDelay);
-    BestIndex(bestTimed_v, bestStoreIndexd_v, d_vTimeStamp, _msecPosDelay);
-    BestIndex(bestTimed_p, bestStoreIndexd_p, d_pTimeStamp, _msecPosDelay);
-    BestIndex(bestTimed_v_m, bestStoreIndexd_v_m, d_v_mTimeStamp, _msecPosDelay);
-    BestIndex(bestTimed_p_m, bestStoreIndexd_p_m, d_p_mTimeStamp, _msecPosDelay);
+    //BestIndex(_msecTauDelay);
+    BestIndex(bestTimeD, bestStoreIndexD, DTimeStamp, _msecTauDelay);
+    BestIndex(bestTimed_v, bestStoreIndexd_v, d_vTimeStamp, _msecTauDelay);
+    BestIndex(bestTimed_p, bestStoreIndexd_p, d_pTimeStamp, _msecTauDelay);
+    BestIndex(bestTimed_v_m, bestStoreIndexd_v_m, d_v_mTimeStamp, _msecTauDelay);
+    BestIndex(bestTimed_p_m, bestStoreIndexd_p_m, d_p_mTimeStamp, _msecTauDelay);
     AttitudePredictor(quat);
     VelocityPredictor(velocity);
     PositionPredictor(position);
-    VelocityPredictor2(quat, velocity, _msecPosDelay);
+    VelocityPredictor2(quat, velocity, _msecTauDelay);
     PositionPredictor2(position);
     static FILE *mylog;
     if (mylog==NULL) {

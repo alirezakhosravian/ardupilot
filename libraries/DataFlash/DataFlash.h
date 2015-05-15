@@ -75,6 +75,7 @@ public:
     void Log_Write_POS(AP_AHRS &ahrs);
 #if AP_AHRS_NAVEKF_AVAILABLE
     void Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled);
+    void Log_Write_EKF2(AP_AHRS_NavEKF &ahrs);
 #endif
     void Log_Write_MavCmd(uint16_t cmd_total, const mavlink_mission_item_t& mav_cmd);
     void Log_Write_Radio(const mavlink_radio_t &packet);
@@ -378,6 +379,71 @@ struct PACKED log_EKF5 {
     uint16_t errHAGL;
 };
 
+
+struct PACKED log_ANU1 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    int16_t roll;
+    int16_t pitch;
+    uint16_t yaw;
+    float velN;
+    float velE;
+    float velD;
+    float posN;
+    float posE;
+    float posD;
+    int16_t gyrX;
+    int16_t gyrY;
+    int16_t gyrZ;
+};
+
+struct PACKED log_ANU2 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    int8_t Ratio;
+    int8_t AZ1bias;
+    int8_t AZ2bias;
+    int16_t windN;
+    int16_t windE;
+    int16_t magN;
+    int16_t magE;
+    int16_t magD;
+    int16_t magX;
+    int16_t magY;
+    int16_t magZ;
+};
+
+struct PACKED log_ANU3 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    int16_t innovVN;
+    int16_t innovVE;
+    int16_t innovVD;
+    int16_t innovPN;
+    int16_t innovPE;
+    int16_t innovPD;
+    int16_t innovMX;
+    int16_t innovMY;
+    int16_t innovMZ;
+    int16_t innovVT;
+};
+
+struct PACKED log_ANU4 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    int16_t sqrtvarV;
+    int16_t sqrtvarP;
+    int16_t sqrtvarH;
+    int16_t sqrtvarMX;
+    int16_t sqrtvarMY;
+    int16_t sqrtvarMZ;
+    int16_t sqrtvarVT;
+    int8_t  offsetNorth;
+    int8_t  offsetEast;
+    uint8_t faults;
+    uint8_t staticmode;
+};
+
 struct PACKED log_Cmd {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -654,6 +720,14 @@ Format characters in the format string for binary log messages
       "EKF3","Qcccccchhhc","TimeUS,IVN,IVE,IVD,IPN,IPE,IPD,IMX,IMY,IMZ,IVT" }, \
     { LOG_EKF4_MSG, sizeof(log_EKF4), \
       "EKF4","QcccccccbbBBH","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,TS,SS" }, \
+    { LOG_ANU1_MSG, sizeof(log_ANU1), \
+      "ANU1","QccCffffffccc","TimeUS,Roll,Pitch,Yaw,VN,VE,VD,PN,PE,PD,GX,GY,GZ" }, \
+    { LOG_ANU2_MSG, sizeof(log_ANU2), \
+      "ANU2","Qbbbcchhhhhh","TimeUS,Ratio,AZ1bias,AZ2bias,VWN,VWE,MN,ME,MD,MX,MY,MZ" }, \
+    { LOG_ANU3_MSG, sizeof(log_ANU3), \
+      "ANU3","Qcccccchhhc","TimeUS,IVN,IVE,IVD,IPN,IPE,IPD,IMX,IMY,IMZ,IVT" }, \
+    { LOG_ANU4_MSG, sizeof(log_ANU4), \
+      "ANU4","QcccccccbbBB","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,StaticMode" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_UBX1_MSG, sizeof(log_Ubx1), \
@@ -773,6 +847,10 @@ Format characters in the format string for binary log messages
 #define LOG_PIDP_MSG      180
 #define LOG_PIDY_MSG      181
 #define LOG_PIDA_MSG      182
+#define LOG_ANU1_MSG      183
+#define LOG_ANU2_MSG      184
+#define LOG_ANU3_MSG      185
+#define LOG_ANU4_MSG      186
 
 // message types 200 to 210 reversed for GPS driver use
 // message types 211 to 220 reversed for autotune use

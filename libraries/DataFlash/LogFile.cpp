@@ -1088,7 +1088,126 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
          };
         WriteBlock(&pkt5, sizeof(pkt5));
     }
+    Log_Write_EKF2(ahrs);
 }
+
+
+void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
+{
+	// Write first EKF packet
+    Vector3f euler;
+    Vector3f posNED;
+    Vector3f velNED;
+    Vector3f dAngBias;
+    Vector3f dVelBias;
+    Vector3f gyroBias;
+    ahrs.get_NavEKF2().getEulerAngles(euler);
+    ahrs.get_NavEKF2().getVelNED(velNED);
+    ahrs.get_NavEKF2().getPosNED(posNED);
+    ahrs.get_NavEKF2().getGyroBias(gyroBias);
+    struct log_ANU1 pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU1_MSG),
+        time_ms : hal.scheduler->millis(),
+        roll    : (int16_t)(100*degrees(euler.x)), // roll angle (centi-deg, displayed as deg due to format string)
+        pitch   : (int16_t)(100*degrees(euler.y)), // pitch angle (centi-deg, displayed as deg due to format string)
+        yaw     : (uint16_t)wrap_360_cd(100*degrees(euler.z)), // yaw angle (centi-deg, displayed as deg due to format string)
+        velN    : (float)(velNED.x), // velocity North (m/s)
+        velE    : (float)(velNED.y), // velocity East (m/s)
+        velD    : (float)(velNED.z), // velocity Down (m/s)
+        posN    : (float)(posNED.x), // metres North
+        posE    : (float)(posNED.y), // metres East
+        posD    : (float)(posNED.z), // metres Down
+
+        gyrX    : (int16_t)(100*degrees(gyroBias.x)), // cd/sec, displayed as deg/sec due to format string
+        gyrY    : (int16_t)(100*degrees(gyroBias.y)), // cd/sec, displayed as deg/sec due to format string
+        gyrZ    : (int16_t)(100*degrees(gyroBias.z)) // cd/sec, displayed as deg/sec due to format string
+/*
+// Sean change data log
+        gyrX    : (float)(gyroBias.x), 
+        gyrY    : (float)(gyroBias.y), 
+        gyrZ    : (float)(gyroBias.z) 
+*/
+};
+    WriteBlock(&pkt, sizeof(pkt));
+
+	// Write second EKF packet
+    float ratio;
+    float az1bias, az2bias;
+    Vector3f wind;
+    Vector3f magNED;
+    Vector3f magXYZ;
+    ahrs.get_NavEKF2().getIMU1Weighting(ratio);
+    ahrs.get_NavEKF2().getAccelZBias(az1bias, az2bias);
+    ahrs.get_NavEKF2().getWind(wind);
+    ahrs.get_NavEKF2().getMagNED(magNED);
+    ahrs.get_NavEKF2().getMagXYZ(magXYZ);
+    struct log_ANU2 pkt2 = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU2_MSG),
+        time_ms : hal.scheduler->millis(),
+        Ratio   : (int8_t)(100*ratio),
+        AZ1bias : (int8_t)(100*az1bias),
+        AZ2bias : (int8_t)(100*az2bias),
+        windN   : (int16_t)(100*wind.x),
+        windE   : (int16_t)(100*wind.y),
+        magN    : (int16_t)(magNED.x),
+        magE    : (int16_t)(magNED.y),
+        magD    : (int16_t)(magNED.z),
+        magX    : (int16_t)(magXYZ.x),
+        magY    : (int16_t)(magXYZ.y),
+        magZ    : (int16_t)(magXYZ.z)
+    };
+    WriteBlock(&pkt2, sizeof(pkt2));
+
+	// Write third EKF packet
+	Vector3f velInnov;
+	Vector3f posInnov;
+	Vector3f magInnov;
+	float tasInnov;
+    ahrs.get_NavEKF2().getInnovations(velInnov, posInnov, magInnov, tasInnov);
+    struct log_ANU3 pkt3 = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU3_MSG),
+        time_ms : hal.scheduler->millis(),
+        innovVN : (int16_t)(100*velInnov.x),
+        innovVE : (int16_t)(100*velInnov.y),
+        innovVD : (int16_t)(100*velInnov.z),
+        innovPN : (int16_t)(100*posInnov.x),
+        innovPE : (int16_t)(100*posInnov.y),
+        innovPD : (int16_t)(100*posInnov.z),
+        innovMX : (int16_t)(magInnov.x),
+        innovMY : (int16_t)(magInnov.y),
+        innovMZ : (int16_t)(magInnov.z),
+        innovVT : (int16_t)(100*tasInnov)
+    };
+    WriteBlock(&pkt3, sizeof(pkt3));
+	
+	// Write fourth EKF packet
+    float velVar;
+    float posVar;
+    float hgtVar;
+	Vector3f magVar;
+	float tasVar;
+    Vector2f offset;
+    uint8_t faultStatus;
+    ahrs.get_NavEKF2().getVariances(velVar, posVar, hgtVar, magVar, tasVar, offset);
+    ahrs.get_NavEKF2().getFilterFaults(faultStatus);
+    struct log_ANU4 pkt4 = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU4_MSG),
+        time_ms : hal.scheduler->millis(),
+        sqrtvarV : (int16_t)(100*velVar),
+        sqrtvarP : (int16_t)(100*posVar),
+        sqrtvarH : (int16_t)(100*hgtVar),
+        sqrtvarMX : (int16_t)(100*magVar.x),
+        sqrtvarMY : (int16_t)(100*magVar.y),
+        sqrtvarMZ : (int16_t)(100*magVar.z),
+        sqrtvarVT : (int16_t)(100*tasVar),
+        offsetNorth : (int8_t)(offset.x),
+        offsetEast : (int8_t)(offset.y),
+        faults : (uint8_t)(faultStatus),
+        staticmode : (uint8_t)(ahrs.get_NavEKF2().getStaticMode())
+    };
+    WriteBlock(&pkt4, sizeof(pkt4));
+}
+
 #endif
 
 // Write a command processing packet

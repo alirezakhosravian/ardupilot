@@ -3675,7 +3675,7 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
         // get current fix time
         lastFixTime_ms1 = _ahrs->get_gps().last_message_time_ms();
 
-//         printf("%u and %u\n",lastFixTime_ms1,imuSampleTime_ms);
+//         printf("%u and %u\n",imuSampleTime_ms,lastFixTime_ms1);
 
         // read the NED velocity from the GPS
         velNED1 = _ahrs->get_gps().velocity();
@@ -3715,8 +3715,10 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
 
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
+//    uint32_t bestTimeDeltaPos;
+//    uint16_t bestStoreIndexPos;
     BestIndex(bestTimeDelta, bestStoreIndex, VelTimeStamp, _msecEkfDelay, _msecVelDelay);
-
+//    BestIndex(bestTimeDeltaPos, bestStoreIndexPos, VelTimeStamp, _msecEkfDelay, _msecPosDelay);
 
 
 
@@ -3738,6 +3740,8 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
 
 //    printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastFixTime_ms, VelTimeStamp[bestStoreIndex],bestTimeDelta,MAX_MSERR);
 
+//    printf("%u and %u and %u and %u\n", lastFixTime_ms, VelTimeStamp[bestStoreIndex], bestTimeDelta, bestTimeDeltaPos);
+
     if ((lastFixTime_ms != VelTimeStamp[bestStoreIndex]) && (bestTimeDelta < MAX_MSERR)){
         secondLastFixTime_ms = lastFixTime_ms;
         lastFixTime_ms=VelTimeStamp[bestStoreIndex];
@@ -3745,6 +3749,7 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
         gpsNoiseScaler=storedgpsNoiseScaler[bestStoreIndex];
         _fusionModeGPS=stored_fusionModeGPS[bestStoreIndex];
         gpsPosNE=storedgpsPosNE[bestStoreIndex];
+//        gpsPosNE=storedgpsPosNE[bestStoreIndexPos];
          // set flag that lets other functions know that new GPS data has arrived
         newDataGps = true;
         // get state vectors that were stored at the time that is closest to when the the GPS measurement
@@ -3754,6 +3759,11 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
         // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
         decayGpsOffset();  // this should be deleted
 //        printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastFixTime_ms,lastFixTime_ms-lastFixTime_ms1,bestTimeDelta,_msecVelDelay);
+  //      uint32_t tmp1;
+ //       uint32_t tmp2;
+ //       tmp1=_msecVelDelay;
+//        tmp2=_msecPosDelay;
+//        printf("%u and %u and %u and %u and %u and %u\n",bestStoreIndex,bestStoreIndexPos, bestTimeDelta, bestTimeDeltaPos, tmp1, tmp2);
      }
 }
 
@@ -4014,13 +4024,17 @@ void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buf
 
 void NavEKF2::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTotalDelay, AP_Int16 &_msecSensorDelay)
 {
-    uint32_t time_delta;
+    int32_t time_delta;
     closestTime = MAX_MSDELAY;
     closestStoreIndex = 0;
 
+    uint32_t tmpvar1=constrain_int16(_msecTotalDelay, 0, MAX_MSDELAY);
+    uint32_t tmpvar2=_msecSensorDelay;
+
     for (int i=0; i<=(BUFFER_SIZE-1); i++)
     {
-        time_delta = abs( (imuSampleTime_ms - timeStamp[i]) - constrain_int16(_msecTotalDelay, 0, MAX_MSDELAY)+_msecSensorDelay);
+        time_delta = imuSampleTime_ms - timeStamp[i] - tmpvar1+tmpvar2;
+        time_delta=abs(time_delta);
         if (time_delta < closestTime)
         {
             closestStoreIndex = i;

@@ -5,8 +5,8 @@
 #include <AP_Param.h>
 #include <vectorN.h>
 
-#define BUFFER_SIZE  200    //buffer size for sensors
-#define MAX_MSDELAY  2000   // maximum allowed delay
+#define BUFFER_SIZE  50   //  buffer size for sensors, this allows buffering of at least BUFFER_SIZE*20 ms=MAX_MSDELAY of data
+#define MAX_MSDELAY  BUFFER_SIZE*20   // maximum allowed delay
 
 class AP_Predictors
 {
@@ -14,7 +14,7 @@ public:
     AP_Predictors();
     typedef float ftype;
     void AttitudeModel(Vector3f tilde_q);
-    void VelocityModel(Vector3f tilde_Vel);
+    void VelocityModel(Vector3f corrected_tilde_Vel12, ftype dtIMU);
     void VelocityModel2(Vector3f corrected_tilde_Vel12);
     void PositionModel(ftype dtIMU);
     void PositionModel2(ftype dtIMU);
@@ -22,9 +22,9 @@ public:
     void PositionPredictor(Vector3f position);
     void PositionPredictor2(Vector3f position);
     void VelocityPredictor(Vector3f velocity);
-    void VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecPosDelay);
-    void CascadedPredictor(Vector3f tilde_q, Vector3f tilde_Vel, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, AP_Int16 _msecPosDelay, Vector3f velocity, Vector3f position);
-    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecPosDelay);
+    void VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecTauDelay);
+    void CascadedPredictor(Vector3f tilde_q, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, uint32_t imuSampleTimeP_ms, AP_Int16 _msecTauDelay, Vector3f velocity, Vector3f position);
+    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTauDelay);
     void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
     void storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
     void getAttitudePrediction(Quaternion &att);
@@ -33,27 +33,34 @@ public:
     void getVelocityPrediction(Vector3f &vel);
     void getVelocity2Prediction(Vector3f &vel);
 
+
+
 private:
-    uint32_t imuSampleTime_ms;
+    Quaternion q_hat;    // prediction of the current quaternion
+    Vector3f v_hat; // prediction of current velocity
+    Vector3f p_hat; // prediction of current position
+    Vector3f v_hat_m; // prediction of current velocity mixed-invariant
+    Vector3f p_hat_m; // prediction of current position mixed-invariant
+
+    uint32_t imuSampleTimePred_ms;
     Matrix3f D;
     Matrix3f D_T;
     Quaternion D_q;
     Quaternion D_q_k1;
     float n_D_q_k1;
 
-    Quaternion q_hat;    // prediction of the current quaternion
     Quaternion q_hat_T_k1;
     float n_tilde_q;
     Quaternion delta_q;
     Matrix3f R_hat_T;
     Matrix3f R_hat;
     Vector3f d_v;
-    Vector3f v_hat; // prediction of current velocity
+
     Vector3f d_p;
-    Vector3f p_hat; // prediction of current position
-    Vector3f v_hat_m; // prediction of current velocity mixed-invariant
+
+
     Vector3f d_p_m;
-    Vector3f p_hat_m; // prediction of current position mixed-invariant
+
     Vector3f d_v_m;  // mixed-invariant
     Quaternion D_Delay;
 
@@ -131,8 +138,8 @@ private:
     uint32_t bestTime;
     uint16_t bestStoreIndex;
 
-    Matrix3f prevTnb_pred;
-    Matrix3f Tbn_temp;
+//    Matrix3f prevTnb_pred;
+//    Matrix3f Tbn_temp;
 
     Vector3f d_p_Delay;
     Vector3f d_v_Delay;

@@ -82,13 +82,13 @@ public:
     // Constructor
     NavEKF2(const AP_AHRS *ahrs, AP_Baro &baro, RangeFinder &rng);
 
-#define BUFFER_SIZE  200   // sean buffer size for sensors
-#define MAX_MSDELAY  2000   // maximum allowed delay
+#define BUFFER_SIZE  50   //  buffer size for sensors, this allows buffering of at least BUFFER_SIZE*20 ms=MAX_MSDELAY of data
+#define MAX_MSDELAY  BUFFER_SIZE*20   // maximum allowed delay
 #define MAX_MSERR    20  // Maximum ms time error that we allow when reading from sensor buffers.
 
-    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecPosDelay);
-    void storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
-    void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
+    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTotalDelay, AP_Int16 &_msecSensorDelay);
+    void storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime);
+    void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime);
     AP_Int16 _msecEkfDelay;
 
     uint16_t storeIndexIMU;						// arash
@@ -97,6 +97,15 @@ public:
     VectorN<Vector3f,BUFFER_SIZE> storeddVelIMU1; //sean
     VectorN<Vector3f,BUFFER_SIZE>  storeddVelIMU2; //sean
     uint32_t angRateTimeStamp[BUFFER_SIZE];    		  // sean
+
+    uint16_t storeIndexVel;
+    uint32_t lastVelStoreTime_ms;
+    VectorN<Vector3f,BUFFER_SIZE> storedVel;       //  sean
+    uint32_t VelTimeStamp[BUFFER_SIZE];    		  // sean
+    float storedgpsNoiseScaler[BUFFER_SIZE];
+    AP_Int8 stored_fusionModeGPS[BUFFER_SIZE];
+    VectorN<Vector2f,BUFFER_SIZE> storedgpsPosNE;
+
 
     uint16_t storeIndexMag;
     uint32_t lastMagStoreTime_ms;
@@ -129,13 +138,17 @@ public:
     VectorN<Vector3f,BUFFER_SIZE> storedd_v_m;       //  sean buffer for delta corrsponding to velocity prediction mixed-invariant
     uint32_t ctr_rst;  // reset predictor cntr
 
-    uint32_t lastHgtMeasTime1;
-    uint32_t lastHgtTime_ms1;
-    float hgtMea1;
+    uint32_t lastFixTime_ms1;
+    uint32_t secondLastFixTime_ms1;
+    Vector3f velNED1;
 
 
     uint32_t lastMagUpdate1;
     Vector3f magData1;
+
+    uint32_t lastHgtMeasTime1;
+    uint32_t lastHgtTime_ms1;
+    float hgtMea1;
 
     uint32_t lastAirspeedUpdate1;
     float VtasMeas1;

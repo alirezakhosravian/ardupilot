@@ -324,28 +324,28 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("HRZ_DELAY",    32, NavEKF2, _msecEkfDelay, 0),
+    AP_GROUPINFO("HRZ_DELAY",    32, NavEKF2, _msecEkfDelay, 240),
 
     // @Param: MAG_DELAY
     // @DisplayName: Magnetometer delay.
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("MAG_DELAY",    33, NavEKF2, _msecMagDelay, 0),
+    AP_GROUPINFO("MAG_DELAY",    33, NavEKF2, _msecMagDelay, 40),
 
     // @Param: ASP_DELAY
     // @DisplayName: Airspeed delay.
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("ASP_DELAY",    34, NavEKF2, _msecTasDelay, 0),
+    AP_GROUPINFO("ASP_DELAY",    34, NavEKF2, _msecTasDelay, 240),
 
     // @Param: BARO_DELAY
     // @DisplayName: Barometer delay.
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("BARO_DELAY",    35, NavEKF2, _msecHgtDelay, 0),
+    AP_GROUPINFO("BARO_DELAY",    35, NavEKF2, _msecHgtDelay, 80),
 
     AP_GROUPEND
 };
@@ -961,7 +961,7 @@ void NavEKF2::UpdateStrapdownEquationsNED()
 
 //    int GPS_delay_AngRate = ;
     uint32_t timeDeltaAngRate;
-    uint32_t bestTimeDeltaAngRate = 200;
+    uint32_t bestTimeDeltaAngRate = 2000;
     uint16_t bestStoreIndex = 0;
 //    state_elements state_delay;
     Vector3f dAngIMU_Delay;
@@ -971,7 +971,7 @@ void NavEKF2::UpdateStrapdownEquationsNED()
 
     for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
     {
-        timeDeltaAngRate = abs( (imuSampleTime_ms - angRateTimeStamp[i]) - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY));
+        timeDeltaAngRate = abs( (imuSampleTime_ms - angRateTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY));
         if (timeDeltaAngRate < bestTimeDeltaAngRate)
         {
             bestStoreIndex = i;
@@ -1098,12 +1098,13 @@ void NavEKF2::UpdateStrapdownEquationsNED()
     corrected_tilde_Vel1.z -= state.accel_zbias1;
     corrected_tilde_Vel2.z -= state.accel_zbias2;
     corrected_tilde_Vel12 =  corrected_tilde_Vel1* IMU1_weighting +  corrected_tilde_Vel2* (1.0f - IMU1_weighting);
-    tilde_Vel  = Tbn_temp*corrected_tilde_Vel12 + gravityNED*dtIMU;
+//    tilde_Vel  = Tbn_temp*corrected_tilde_Vel12 + gravityNED*dtIMU;
 
 
 //test_Predictor.AttitudePredictor(dAngIMU, state.gyro_bias, _msecPosDelay, state.quat);
 //test_Predictor.VelocityPredictor(state.quat, dVelIMU1, dVelIMU2, IMU1_weighting, dtIMU, _msecPosDelay, state.accel_zbias1, state.accel_zbias2, state.velocity, state.position);
-    test_Predictor.CascadedPredictor(tilde_q, tilde_Vel, corrected_tilde_Vel12, state.quat, dtIMU, _msecPosDelay, state.velocity, state.position);
+// uint16_t test_delay=_msecEkfDelay+20;
+    test_Predictor.CascadedPredictor(tilde_q, corrected_tilde_Vel12, state.quat, dtIMU, imuSampleTime_ms, _msecEkfDelay, state.velocity, state.position);
 
 
 
@@ -3264,7 +3265,7 @@ void NavEKF2::getVelNED(Vector3f &vel) const  //loging predictor states rather t
 
 //void NavEKF2::getVelNED(Vector3f &vel) const
 //{
-//    vel = test_Predictor.v_hat;
+//    vel = test_Predictor.v_hat_m;
 //}
 
 
@@ -3281,7 +3282,7 @@ bool NavEKF2::getPosNED(Vector3f &pos) const  //loging predictor states rather t
 
 //bool NavEKF2::getPosNED(Vector3f &pos) const
 //{
-//    pos = test_Predictor.p_hat;
+//    pos = test_Predictor.p_hat_m;
 //    return true;
 //}
 
@@ -3609,54 +3610,163 @@ void NavEKF2::readIMUData()
     lastAccel2  = accel2;
 }
 
-// check for new valid GPS data and update stored measurement if available
-void NavEKF2::readGpsData()
+//// check for new valid GPS data and update stored measurement if available
+//void NavEKF2::readGpsData()
+//{
+//    // check for new GPS data
+//    if ((_ahrs->get_gps().last_message_time_ms() != lastFixTime_ms) &&
+//            (_ahrs->get_gps().status() >= AP_GPS::GPS_OK_FIX_3D))
+//    {
+//        // store fix time from previous read
+//        secondLastFixTime_ms = lastFixTime_ms;
+//
+//        // get current fix time
+//        lastFixTime_ms = _ahrs->get_gps().last_message_time_ms();
+//
+//        // set flag that lets other functions know that new GPS data has arrived
+//        newDataGps = true;
+//
+//        // get state vectors that were stored at the time that is closest to when the the GPS measurement
+//        // time after accounting for measurement delays
+//        RecallStates(statesAtVelTime, (imuSampleTime_ms - constrain_int16(_msecVelDelay, 0, MAX_MSDELAY)));
+//        RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY)));
+//
+//        // read the NED velocity from the GPS
+//        velNED = _ahrs->get_gps().velocity();
+//
+//        // check if we have enough GPS satellites and increase the gps noise scaler if we don't
+//        if (_ahrs->get_gps().num_sats() >= 6) {
+//            gpsNoiseScaler = 1.0f;
+//        } else if (_ahrs->get_gps().num_sats() == 5) {
+//            gpsNoiseScaler = 1.4f;
+//        } else { // <= 4 satellites
+//            gpsNoiseScaler = 2.0f;
+//        }
+//
+//        // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
+//        if (!_ahrs->get_gps().have_vertical_velocity()) {
+//            // vertical velocity should not be fused
+//            if (_fusionModeGPS == 0) {
+//                _fusionModeGPS = 1;
+//            }
+//        }
+//
+//        // read latitutde and longitude from GPS and convert to NE position
+//        const struct Location &gpsloc = _ahrs->get_gps().location();
+//        gpsPosNE = location_diff(_ahrs->get_home(), gpsloc);
+//        // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
+//        decayGpsOffset();
+//    }
+//}
+
+
+
+void NavEKF2::readGpsData()  // modified for buffering and predictor use
 {
+    bool tmp_newdatastored;
+    uint32_t tmp_index;
     // check for new GPS data
-    if ((_ahrs->get_gps().last_message_time_ms() != lastFixTime_ms) &&
+    if ((_ahrs->get_gps().last_message_time_ms() != lastFixTime_ms1) &&
             (_ahrs->get_gps().status() >= AP_GPS::GPS_OK_FIX_3D))
     {
         // store fix time from previous read
-        secondLastFixTime_ms = lastFixTime_ms;
+        secondLastFixTime_ms1 = lastFixTime_ms1;
 
         // get current fix time
-        lastFixTime_ms = _ahrs->get_gps().last_message_time_ms();
+        lastFixTime_ms1 = _ahrs->get_gps().last_message_time_ms();
 
-        // set flag that lets other functions know that new GPS data has arrived
+//         printf("%u and %u\n",imuSampleTime_ms,lastFixTime_ms1);
+
+        // read the NED velocity from the GPS
+        velNED1 = _ahrs->get_gps().velocity();
+
+        tmp_index=storeIndexVel;
+        storeDataVector(velNED1, storedVel, lastVelStoreTime_ms, VelTimeStamp, storeIndexVel, lastFixTime_ms1);
+        // check if new velocity data is stored into buffer.
+        if (tmp_index != storeIndexVel){
+            tmp_newdatastored=true;
+        } else {
+            tmp_newdatastored=false;
+        }
+        // if new velocity data is stored then store new NoiseScaler and new fusionModeGPS and new gpsPosNE into the corresponding buffers.
+        if (tmp_newdatastored){
+            // check if we have enough GPS satellites and increase the gps noise scaler if we don't
+            if (_ahrs->get_gps().num_sats() >= 6) {
+                storedgpsNoiseScaler[storeIndexVel-1] = 1.0f;
+            } else if (_ahrs->get_gps().num_sats() == 5) {
+                storedgpsNoiseScaler[storeIndexVel-1] = 1.4f;
+            } else { // <= 4 satellites
+                storedgpsNoiseScaler[storeIndexVel-1] = 2.0f;
+            }
+            // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
+            if (!_ahrs->get_gps().have_vertical_velocity()) {
+                // vertical velocity should not be fused
+                if (stored_fusionModeGPS[storeIndexVel-1] == 0) {
+                    stored_fusionModeGPS[storeIndexVel-1] = 1;
+                }
+            }
+        // read latitutde and longitude from GPS and convert to NE position
+        const struct Location &gpsloc = _ahrs->get_gps().location();
+        storedgpsPosNE[storeIndexVel-1] = location_diff(_ahrs->get_home(), gpsloc);
+        }
+
+
+    }
+
+    uint32_t bestTimeDelta;
+    uint16_t bestStoreIndex;
+//    uint32_t bestTimeDeltaPos;
+//    uint16_t bestStoreIndexPos;
+    BestIndex(bestTimeDelta, bestStoreIndex, VelTimeStamp, _msecEkfDelay, _msecVelDelay);
+//    BestIndex(bestTimeDeltaPos, bestStoreIndexPos, VelTimeStamp, _msecEkfDelay, _msecPosDelay);
+
+
+
+//    uint32_t timeDelta
+//            for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
+//            {
+////                timeDelta = abs( (imuSampleTime_ms - VelTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY) + _msecVelDelay);
+//               timeDelta = abs( imuSampleTime_ms - VelTimeStamp[i] - _msecEkfDelay + _msecVelDelay);
+////               printf("%u and %u and %u\n",timeDelta,imuSampleTime_ms,VelTimeStamp[i]);
+//                if (timeDelta < bestTimeDelta)
+//                {
+//                    bestStoreIndex = i;
+//                    bestTimeDelta = timeDelta;
+//                }
+//            }
+
+//    printf("%u and %u\n",bestTimeDelta,imuSampleTime_ms);
+
+
+//    printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastFixTime_ms, VelTimeStamp[bestStoreIndex],bestTimeDelta,MAX_MSERR);
+
+//    printf("%u and %u and %u and %u\n", lastFixTime_ms, VelTimeStamp[bestStoreIndex], bestTimeDelta, bestTimeDeltaPos);
+
+    if ((lastFixTime_ms != VelTimeStamp[bestStoreIndex]) && (bestTimeDelta < MAX_MSERR)){
+        secondLastFixTime_ms = lastFixTime_ms;
+        lastFixTime_ms=VelTimeStamp[bestStoreIndex];
+        velNED=storedVel[bestStoreIndex];
+        gpsNoiseScaler=storedgpsNoiseScaler[bestStoreIndex];
+        _fusionModeGPS=stored_fusionModeGPS[bestStoreIndex];
+        gpsPosNE=storedgpsPosNE[bestStoreIndex];
+//        gpsPosNE=storedgpsPosNE[bestStoreIndexPos];
+         // set flag that lets other functions know that new GPS data has arrived
         newDataGps = true;
-
         // get state vectors that were stored at the time that is closest to when the the GPS measurement
         // time after accounting for measurement delays
         RecallStates(statesAtVelTime, (imuSampleTime_ms - constrain_int16(_msecVelDelay, 0, MAX_MSDELAY)));
         RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY)));
-
-        // read the NED velocity from the GPS
-        velNED = _ahrs->get_gps().velocity();
-
-        // check if we have enough GPS satellites and increase the gps noise scaler if we don't
-        if (_ahrs->get_gps().num_sats() >= 6) {
-            gpsNoiseScaler = 1.0f;
-        } else if (_ahrs->get_gps().num_sats() == 5) {
-            gpsNoiseScaler = 1.4f;
-        } else { // <= 4 satellites
-            gpsNoiseScaler = 2.0f;
-        }
-
-        // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
-        if (!_ahrs->get_gps().have_vertical_velocity()) {
-            // vertical velocity should not be fused
-            if (_fusionModeGPS == 0) {
-                _fusionModeGPS = 1;
-            }
-        }
-
-        // read latitutde and longitude from GPS and convert to NE position
-        const struct Location &gpsloc = _ahrs->get_gps().location();
-        gpsPosNE = location_diff(_ahrs->get_home(), gpsloc);
         // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
-        decayGpsOffset();
-    }
+        decayGpsOffset();  // this should be deleted
+        printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastFixTime_ms,lastFixTime_ms-lastFixTime_ms1,bestTimeDelta,_msecVelDelay);
+  //      uint32_t tmp1;
+ //       uint32_t tmp2;
+ //       tmp1=_msecVelDelay;
+//        tmp2=_msecPosDelay;
+//        printf("%u and %u and %u and %u and %u and %u\n",bestStoreIndex,bestStoreIndexPos, bestTimeDelta, bestTimeDeltaPos, tmp1, tmp2);
+     }
 }
+
 
 // check for new altitude measurement data and update stored measurement if available
 //void NavEKF2::readHgtData()
@@ -3701,7 +3811,7 @@ void NavEKF2::readHgtData()    // modified for the delayed buffer
 //                HgtTimeStamp[storeIndexHgt] = lastHgtStoreTime_ms;
 //                storeIndexHgt = storeIndexHgt + 1;
 //            }
-        storeDataFloat(hgtMea1, storedHgt, lastHgtStoreTime_ms, HgtTimeStamp, storeIndexHgt);
+        storeDataFloat(hgtMea1, storedHgt, lastHgtStoreTime_ms, HgtTimeStamp, storeIndexHgt, lastHgtTime_ms1);
 
 //printf("%u , %u, %f \n", TASmsecPrev, imuSampleTime_ms);
 //        cout << imuSampleTime_ms << "   " << storedAngRate[storeIndexIMU] << "\n";
@@ -3709,7 +3819,9 @@ void NavEKF2::readHgtData()    // modified for the delayed buffer
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
-    BestIndex(bestTimeDelta, bestStoreIndex, HgtTimeStamp, _msecEkfDelay);
+    BestIndex(bestTimeDelta, bestStoreIndex, HgtTimeStamp, _msecEkfDelay, _msecHgtDelay);
+
+// printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastHgtMeasTime, HgtTimeStamp[bestStoreIndex],bestTimeDelta,MAX_MSERR);
 
 //    uint32_t timeDeltaHgt;
 //    uint32_t bestTimeDeltaHgt = 200;
@@ -3733,13 +3845,12 @@ void NavEKF2::readHgtData()    // modified for the delayed buffer
             hgtMea = storedHgt[bestStoreIndex];
             newDataHgt = true;
             RecallStates(statesAtHgtTime, (imuSampleTime_ms - _msecHgtDelay));   // this should be deleted
-            // printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastHgtTime_ms,lastHgtTime_ms1-lastHgtTime_ms,bestTimeDeltaHgt,_msecHgtDelay);
              }
         else {
         newDataHgt = false;
         }
-         //   printf("%u and %u and %u\n", imuSampleTime_ms, bestStoreIndex, imuSampleTime_ms - HgtTimeStamp[bestStoreIndex]);
-}
+//        printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastHgtMeasTime,lastHgtMeasTime1-lastHgtMeasTime,bestTimeDelta,_msecHgtDelay);
+  }
 
 
 
@@ -3756,7 +3867,7 @@ void NavEKF2::readMagData()
         // We scale compass data to improve numerical conditioning
         magData1 = _ahrs->get_compass()->get_field() * 0.001f;
 
-    storeDataVector(magData1, storedMag, lastMagStoreTime_ms, MagTimeStamp, storeIndexMag);
+    storeDataVector(magData1, storedMag, lastMagStoreTime_ms, MagTimeStamp, storeIndexMag, lastMagUpdate1);
 //        if (lastMagUpdate1 - lastMagStoreTime_ms >= 10) {
 //            lastMagStoreTime_ms = lastMagUpdate1;
 //            if (storeIndexMag > (BUFFER_SIZE-1)) {
@@ -3772,7 +3883,7 @@ void NavEKF2::readMagData()
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
-    BestIndex(bestTimeDelta, bestStoreIndex, MagTimeStamp, _msecEkfDelay);
+    BestIndex(bestTimeDelta, bestStoreIndex, MagTimeStamp, _msecEkfDelay, _msecMagDelay);
 
 //        uint32_t timeDeltaMag;
 //        uint32_t bestTimeDeltaMag = 200;
@@ -3796,12 +3907,11 @@ void NavEKF2::readMagData()
             newDataMag = true;
             // get states stored at time closest to measurement time after allowance for measurement delay
             RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - _msecMagDelay));  // this should be deleted later on
-            // printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDeltaMag,_msecMagDelay);
+//         printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDelta,_msecMagDelay);
              }
         else {
         newDataMag = false;
         }
-    printf("%u and %u \n",_msecMagDelay,_msecEkfDelay);
 }
 
 // check for new airspeed data and update stored measurements if available
@@ -3835,7 +3945,7 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
         lastAirspeedUpdate1 = aspeed->last_update_ms();
         VtasMeas1 = aspeed->get_airspeed() * aspeed->get_EAS2TAS();
 
-        storeDataFloat(VtasMeas1, storedTas, lastTasStoreTime_ms, TasTimeStamp, storeIndexTas);
+        storeDataFloat(VtasMeas1, storedTas, lastTasStoreTime_ms, TasTimeStamp, storeIndexTas, lastAirspeedUpdate1);
 
 //        if (lastAirspeedUpdate1 - lastTasStoreTime_ms >= 10) {
 //            lastTasStoreTime_ms = lastAirspeedUpdate1;
@@ -3850,7 +3960,7 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
-    BestIndex(bestTimeDelta, bestStoreIndex, TasTimeStamp, _msecEkfDelay);
+    BestIndex(bestTimeDelta, bestStoreIndex, TasTimeStamp, _msecEkfDelay, _msecTasDelay);
 
 //        uint32_t timeDeltaTas;
 //        uint32_t bestTimeDeltaTas = 200;
@@ -3876,17 +3986,17 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
             newDataTas = true;
             // get states stored at time closest to measurement time after allowance for measurement delay
             RecallStates(statesAtVtasMeasTime, (imuSampleTime_ms - _msecTasDelay));  // this should be deleted later on
- //           printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms-lastAirspeedUpdate,lastAirspeedUpdate1-lastAirspeedUpdate,bestTimeDeltaTas,_msecTasDelay,_msecEkfDelay);
-             }
+//            printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastAirspeedUpdate,lastAirspeedUpdate1-lastAirspeedUpdate,bestTimeDelta,_msecTasDelay);
+            }
         else {
         newDataTas = false;
         }
 
 }
 
-void NavEKF2::storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex)
+void NavEKF2::storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime)
 {
-    uint32_t currentTime = hal.scheduler->millis();
+//    uint32_t currentTime = hal.scheduler->millis();
     if (currentTime - lastStoreTime >= 10) {
         lastStoreTime = currentTime;
         if (storeIndex > (BUFFER_SIZE-1)) {
@@ -3898,9 +4008,9 @@ void NavEKF2::storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t
     }
 }
 
-void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex)
+void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime)
 {
-    uint32_t currentTime = hal.scheduler->millis();
+//    uint32_t currentTime = hal.scheduler->millis();
     if (currentTime - lastStoreTime >= 10) {
         lastStoreTime = currentTime;
         if (storeIndex > (BUFFER_SIZE-1)) {
@@ -3912,16 +4022,19 @@ void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buf
     }
 }
 
-void NavEKF2::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecPosDelay)
+void NavEKF2::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTotalDelay, AP_Int16 &_msecSensorDelay)
 {
-    uint32_t time_delta;
+    int32_t time_delta;
     closestTime = MAX_MSDELAY;
     closestStoreIndex = 0;
 
+    uint32_t tmpvar1=constrain_int16(_msecTotalDelay, 0, MAX_MSDELAY);
+    uint32_t tmpvar2=_msecSensorDelay;
+
     for (int i=0; i<=(BUFFER_SIZE-1); i++)
     {
-        time_delta = abs( (imuSampleTime_ms - timeStamp[i]) - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY));
-        //       printf("%u \n",_msecPosDelay);
+        time_delta = imuSampleTime_ms - timeStamp[i] - tmpvar1+tmpvar2;
+        time_delta=abs(time_delta);
         if (time_delta < closestTime)
         {
             closestStoreIndex = i;

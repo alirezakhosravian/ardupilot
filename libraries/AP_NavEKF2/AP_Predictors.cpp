@@ -260,6 +260,52 @@ void AP_Predictors::getVelocity2Prediction(Vector3f &vel)
     vel = v_hat_m;
 }
 
+void AP_Predictors::getSwitchPrediction(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel)
+{
+        if(sel == 0)
+        {
+            f1 = q_hat.q1;
+            f2 = q_hat.q2;
+            f3 = q_hat.q3;
+            f4 = q_hat.q4;
+        }
+        else if(sel == 1)
+        {
+            f1 = v_hat.x;
+            f2 = v_hat.y;
+            f3 = v_hat.z;
+            f4 = 0;
+        }
+        else if(sel == 2)
+        {
+            f1 = p_hat.x;
+            f2 = p_hat.y;
+            f3 = p_hat.z;
+            f4 = 0;
+        }
+        else if(sel == 3)
+        {
+            f1 = v_hat_m.x;
+            f2 = v_hat_m.y;
+            f3 = v_hat_m.z;
+            f4 = 0;
+        }
+        else if(sel == 4)
+        {
+            f1 = p_hat_m.x;
+            f2 = p_hat_m.y;
+            f3 = p_hat_m.z;
+            f4 = 0;
+        }
+        else
+        {
+            f1 = 0;
+            f2 = 0;
+            f3 = 0;
+            f4 = 0;
+        }
+}
+
 void AP_Predictors::CascadedPredictor(Vector3f tilde_q, Vector3f corrected_tilde_Vel12, Quaternion quat, ftype dtIMU, uint32_t imuSampleTimeP_ms, AP_Int16 _msecTauDelay, Vector3f velocity, Vector3f position)
 {
     imuSampleTimePred_ms = imuSampleTimeP_ms;

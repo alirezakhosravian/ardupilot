@@ -126,7 +126,6 @@ public:
     void send_meminfo(void);
     void send_power_status(void);
     void send_ahrs2(AP_AHRS &ahrs);
-    void send_ahrs3(AP_AHRS &ahrs);
     bool send_gps_raw(AP_GPS &gps);
     void send_system_time(AP_GPS &gps);
     void send_radio_in(uint8_t receiver_rssi);
@@ -137,6 +136,7 @@ public:
     void send_battery2(const AP_BattMonitor &battery);
 #if AP_AHRS_NAVEKF_AVAILABLE
     void send_opticalflow(AP_AHRS_NavEKF &ahrs, const OpticalFlow &optflow);
+    void send_ahrs3(AP_AHRS_NavEKF &ahrs);
 #endif
     void send_autopilot_version(void) const;
     void send_local_position(const AP_AHRS &ahrs) const;

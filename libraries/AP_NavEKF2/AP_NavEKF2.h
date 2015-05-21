@@ -138,6 +138,8 @@ public:
     VectorN<Vector3f,BUFFER_SIZE> storedd_v_m;       //  sean buffer for delta corrsponding to velocity prediction mixed-invariant
     uint32_t ctr_rst;  // reset predictor cntr
 
+    AP_Int8 pred_sel;
+
     uint32_t lastFixTime_ms1;
     uint32_t secondLastFixTime_ms1;
     Vector3f velNED1;

@@ -347,6 +347,13 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     // @User: Advanced
     AP_GROUPINFO("BARO_DELAY",    35, NavEKF2, _msecHgtDelay, 80),
 
+    // @Param: PRED_SEL
+    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
+    // @Description:
+    // @Values:
+    // @User: Advanced
+    AP_GROUPINFO("PRED_SEL",      36, NavEKF2,  pred_sel, 0),
+
     AP_GROUPEND
 };
 

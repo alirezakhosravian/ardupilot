@@ -3617,56 +3617,6 @@ void NavEKF2::readIMUData()
     lastAccel2  = accel2;
 }
 
-//// check for new valid GPS data and update stored measurement if available
-//void NavEKF2::readGpsData()
-//{
-//    // check for new GPS data
-//    if ((_ahrs->get_gps().last_message_time_ms() != lastFixTime_ms) &&
-//            (_ahrs->get_gps().status() >= AP_GPS::GPS_OK_FIX_3D))
-//    {
-//        // store fix time from previous read
-//        secondLastFixTime_ms = lastFixTime_ms;
-//
-//        // get current fix time
-//        lastFixTime_ms = _ahrs->get_gps().last_message_time_ms();
-//
-//        // set flag that lets other functions know that new GPS data has arrived
-//        newDataGps = true;
-//
-//        // get state vectors that were stored at the time that is closest to when the the GPS measurement
-//        // time after accounting for measurement delays
-//        RecallStates(statesAtVelTime, (imuSampleTime_ms - constrain_int16(_msecVelDelay, 0, MAX_MSDELAY)));
-//        RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY)));
-//
-//        // read the NED velocity from the GPS
-//        velNED = _ahrs->get_gps().velocity();
-//
-//        // check if we have enough GPS satellites and increase the gps noise scaler if we don't
-//        if (_ahrs->get_gps().num_sats() >= 6) {
-//            gpsNoiseScaler = 1.0f;
-//        } else if (_ahrs->get_gps().num_sats() == 5) {
-//            gpsNoiseScaler = 1.4f;
-//        } else { // <= 4 satellites
-//            gpsNoiseScaler = 2.0f;
-//        }
-//
-//        // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
-//        if (!_ahrs->get_gps().have_vertical_velocity()) {
-//            // vertical velocity should not be fused
-//            if (_fusionModeGPS == 0) {
-//                _fusionModeGPS = 1;
-//            }
-//        }
-//
-//        // read latitutde and longitude from GPS and convert to NE position
-//        const struct Location &gpsloc = _ahrs->get_gps().location();
-//        gpsPosNE = location_diff(_ahrs->get_home(), gpsloc);
-//        // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
-//        decayGpsOffset();
-//    }
-//}
-
-
 
 void NavEKF2::readGpsData()  // modified for buffering and predictor use
 {
@@ -3681,8 +3631,6 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
 
         // get current fix time
         lastFixTime_ms1 = _ahrs->get_gps().last_message_time_ms();
-
-//         printf("%u and %u\n",imuSampleTime_ms,lastFixTime_ms1);
 
         // read the NED velocity from the GPS
         velNED1 = _ahrs->get_gps().velocity();
@@ -3716,8 +3664,6 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
         const struct Location &gpsloc = _ahrs->get_gps().location();
         storedgpsPosNE[storeIndexVel-1] = location_diff(_ahrs->get_home(), gpsloc);
         }
-
-
     }
 
     uint32_t bestTimeDelta;
@@ -3725,31 +3671,7 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
 //    uint32_t bestTimeDeltaPos;
 //    uint16_t bestStoreIndexPos;
     BestIndex(bestTimeDelta, bestStoreIndex, VelTimeStamp, _msecEkfDelay, _msecVelDelay);
-//    BestIndex(bestTimeDeltaPos, bestStoreIndexPos, VelTimeStamp, _msecEkfDelay, _msecPosDelay);
-
-
-
-//    uint32_t timeDelta
-//            for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
-//            {
-////                timeDelta = abs( (imuSampleTime_ms - VelTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY) + _msecVelDelay);
-//               timeDelta = abs( imuSampleTime_ms - VelTimeStamp[i] - _msecEkfDelay + _msecVelDelay);
-////               printf("%u and %u and %u\n",timeDelta,imuSampleTime_ms,VelTimeStamp[i]);
-//                if (timeDelta < bestTimeDelta)
-//                {
-//                    bestStoreIndex = i;
-//                    bestTimeDelta = timeDelta;
-//                }
-//            }
-
-//    printf("%u and %u\n",bestTimeDelta,imuSampleTime_ms);
-
-
-//    printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastFixTime_ms, VelTimeStamp[bestStoreIndex],bestTimeDelta,MAX_MSERR);
-
-//    printf("%u and %u and %u and %u\n", lastFixTime_ms, VelTimeStamp[bestStoreIndex], bestTimeDelta, bestTimeDeltaPos);
-
-    if ((lastFixTime_ms != VelTimeStamp[bestStoreIndex]) && (bestTimeDelta < MAX_MSERR)){
+if ((lastFixTime_ms != VelTimeStamp[bestStoreIndex]) && (bestTimeDelta < MAX_MSERR)){
         secondLastFixTime_ms = lastFixTime_ms;
         lastFixTime_ms=VelTimeStamp[bestStoreIndex];
         velNED=storedVel[bestStoreIndex];
@@ -3765,39 +3687,16 @@ void NavEKF2::readGpsData()  // modified for buffering and predictor use
         RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY)));
         // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
         decayGpsOffset();  // this should be deleted
-        printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastFixTime_ms,lastFixTime_ms-lastFixTime_ms1,bestTimeDelta,_msecVelDelay);
-  //      uint32_t tmp1;
- //       uint32_t tmp2;
- //       tmp1=_msecVelDelay;
-//        tmp2=_msecPosDelay;
-//        printf("%u and %u and %u and %u and %u and %u\n",bestStoreIndex,bestStoreIndexPos, bestTimeDelta, bestTimeDeltaPos, tmp1, tmp2);
+//        printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms-lastFixTime_ms,lastFixTime_ms-lastFixTime_ms1,lastFixTime_ms-secondLastFixTime_ms,bestTimeDelta,constrain_int16(_msecVelDelay, 0, MAX_MSDELAY));
      }
 }
 
 
-// check for new altitude measurement data and update stored measurement if available
-//void NavEKF2::readHgtData()
-//{
-//    // check to see if baro measurement has changed so we know if a new measurement has arrived
-//    if (_baro.get_last_update() != lastHgtMeasTime) {
-//        // time stamp used to check for new measurement
-//        lastHgtMeasTime = _baro.get_last_update();
-//
-//        // time stamp used to check for timeout
-//        lastHgtTime_ms = imuSampleTime_ms;
-//
-//        // get measurement and set flag to let other functions know new data has arrived
-//        hgtMea = _baro.get_altitude();
-//        newDataHgt = true;
-//
-//        // get states that wer stored at the time closest to the measurement time, taking measurement delay into account
-//        RecallStates(statesAtHgtTime, (imuSampleTime_ms - _msecHgtDelay));
-//    } else {
-//        newDataHgt = false;
-//    }
-//}
 void NavEKF2::readHgtData()    // modified for the delayed buffer
 {
+    bool tmp_newdatastored;  // shows is new data is stored in the buffer
+    uint32_t tmp_index;
+
     // check to see if baro measurement has changed so we know if a new measurement has arrived
     if (_baro.get_last_update() != lastHgtMeasTime1) {
         // time stamp used to check for new measurement
@@ -3809,54 +3708,38 @@ void NavEKF2::readHgtData()    // modified for the delayed buffer
         // get measurement and set flag to let other functions know new data has arrived
         hgtMea1 = _baro.get_altitude();
 
-//           if (lastHgtTime_ms1 - lastHgtStoreTime_ms >= 10) {
-//                lastHgtStoreTime_ms = lastHgtTime_ms1;
-//                if (storeIndexHgt > (BUFFER_SIZE-1)) {
-//                    storeIndexHgt = 0;
-//                }
-//                storedHgt[storeIndexHgt] = hgtMea1;
-//                HgtTimeStamp[storeIndexHgt] = lastHgtStoreTime_ms;
-//                storeIndexHgt = storeIndexHgt + 1;
-//            }
-        storeDataFloat(hgtMea1, storedHgt, lastHgtStoreTime_ms, HgtTimeStamp, storeIndexHgt, lastHgtTime_ms1);
+        tmp_index=storeIndexHgt;
+        storeDataFloat(hgtMea1, storedHgt, lastHgtStoreTime_ms, HgtTimeStamp, storeIndexHgt, lastHgtMeasTime1);
+         // check if new data is stored into buffer.
+        if (tmp_index != storeIndexHgt){
+            tmp_newdatastored=true;
+        } else {
+            tmp_newdatastored=false;
+        }
+        // If new data is stored, store also the current time associated to that.
+        if (tmp_newdatastored){
+            lastHgtTimeBuffer[storeIndexHgt-1]=lastHgtTime_ms1;
+            }
+        }
 
-//printf("%u , %u, %f \n", TASmsecPrev, imuSampleTime_ms);
-//        cout << imuSampleTime_ms << "   " << storedAngRate[storeIndexIMU] << "\n";
-    }
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
     BestIndex(bestTimeDelta, bestStoreIndex, HgtTimeStamp, _msecEkfDelay, _msecHgtDelay);
 
-// printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastHgtMeasTime, HgtTimeStamp[bestStoreIndex],bestTimeDelta,MAX_MSERR);
+// printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms, lastHgtMeasTime, HgtTimeStamp[bestStoreIndex],bestTimeDelta,constrain_int16(_msecHgtDelay, 0, MAX_MSDELAY));
 
-//    uint32_t timeDeltaHgt;
-//    uint32_t bestTimeDeltaHgt = 200;
-//    uint16_t bestStoreIndex = 0;
-//
-//
-//            for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
-//            {
-//                timeDeltaHgt = abs( (imuSampleTime_ms - HgtTimeStamp[i]) - constrain_int16(_msecPosDelay, 0, MAX_MSDELAY) + _msecHgtDelay);
-//                if (timeDeltaHgt < bestTimeDeltaHgt)
-//                {
-//                    bestStoreIndex = i;
-//                    bestTimeDeltaHgt = timeDeltaHgt;
-//                }
-//            }
-
-//printf("%u , %u, %u, %u , %d, %f \n", imuSampleTime_ms, bestStoreIndex, bestTimeDeltaMag, MagTimeStamp[storeIndexMag-1], int(MagTimeStamp[storeIndexMag-1]-MagTimeStamp[bestStoreIndex]), Mag_Delay[0]);
         if ((lastHgtMeasTime != HgtTimeStamp[bestStoreIndex]) && bestTimeDelta < MAX_MSERR){
             lastHgtMeasTime = HgtTimeStamp[bestStoreIndex];
-            lastHgtTime_ms  = HgtTimeStamp[bestStoreIndex];
+            lastHgtTime_ms  = lastHgtTimeBuffer[bestStoreIndex];
             hgtMea = storedHgt[bestStoreIndex];
             newDataHgt = true;
-            RecallStates(statesAtHgtTime, (imuSampleTime_ms - _msecHgtDelay));   // this should be deleted
+            RecallStates(statesAtHgtTime, (imuSampleTime_ms - constrain_int16(_msecHgtDelay, 0, MAX_MSDELAY)));   // this should be deleted
+//        printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms,imuSampleTime_ms-lastHgtMeasTime,lastHgtMeasTime1-lastHgtMeasTime,bestTimeDelta,constrain_int16(_msecHgtDelay, 0, MAX_MSDELAY));
              }
         else {
         newDataHgt = false;
         }
-//        printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastHgtMeasTime,lastHgtMeasTime1-lastHgtMeasTime,bestTimeDelta,_msecHgtDelay);
   }
 
 
@@ -3875,37 +3758,12 @@ void NavEKF2::readMagData()
         magData1 = _ahrs->get_compass()->get_field() * 0.001f;
 
     storeDataVector(magData1, storedMag, lastMagStoreTime_ms, MagTimeStamp, storeIndexMag, lastMagUpdate1);
-//        if (lastMagUpdate1 - lastMagStoreTime_ms >= 10) {
-//            lastMagStoreTime_ms = lastMagUpdate1;
-//            if (storeIndexMag > (BUFFER_SIZE-1)) {
-//                storeIndexMag = 0;
-//            }
-//            storedMag[storeIndexMag] = magData1;
-//            MagTimeStamp[storeIndexMag] = lastMagStoreTime_ms;
-//            storeIndexMag = storeIndexMag + 1;
-//        }
-//    printf("%u and %u and %u\n",imuSampleTime_ms , storeIndexMag, MagTimeStamp[storeIndexMag-1]);
-
     }
+
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
     BestIndex(bestTimeDelta, bestStoreIndex, MagTimeStamp, _msecEkfDelay, _msecMagDelay);
-
-//        uint32_t timeDeltaMag;
-//        uint32_t bestTimeDeltaMag = 200;
-//        uint16_t bestStoreIndex = 0;
-//
-//        for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
-//        {
-//            timeDeltaMag = abs( (imuSampleTime_ms - MagTimeStamp[i]) -constrain_int16(_msecPosDelay, 0, MAX_MSDELAY) + _msecMagDelay);
-//            if (timeDeltaMag < bestTimeDeltaMag)
-//            {
-//                bestStoreIndex = i;
-//                bestTimeDeltaMag = timeDeltaMag;
-//            }
-//        }
-
 
         if ((lastMagUpdate != MagTimeStamp[bestStoreIndex]) && bestTimeDelta < MAX_MSERR){
             lastMagUpdate = MagTimeStamp[bestStoreIndex];
@@ -3913,32 +3771,14 @@ void NavEKF2::readMagData()
             // let other processes know that new compass data has arrived
             newDataMag = true;
             // get states stored at time closest to measurement time after allowance for measurement delay
-            RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - _msecMagDelay));  // this should be deleted later on
-//         printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDelta,_msecMagDelay);
+            RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - constrain_int16(_msecMagDelay, 0, MAX_MSDELAY)));  // this should be deleted later on
+//        printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms,imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDelta,constrain_int16(_msecMagDelay, 0, MAX_MSDELAY));
              }
         else {
         newDataMag = false;
         }
 }
 
-// check for new airspeed data and update stored measurements if available
-//void NavEKF2::readAirSpdData()
-//{
-//    // if airspeed reading is valid and is set by the user to be used and has been updated then
-//    // we take a new reading, convert from EAS to TAS and set the flag letting other functions
-//    // know a new measurement is available
-//    const AP_Airspeed *aspeed = _ahrs->get_airspeed();
-//    if (aspeed &&
-//            aspeed->use() &&
-//            aspeed->last_update_ms() != lastAirspeedUpdate) {
-//        VtasMeas = aspeed->get_airspeed() * aspeed->get_EAS2TAS();
-//        lastAirspeedUpdate = aspeed->last_update_ms();
-//        newDataTas = true;
-//        RecallStates(statesAtVtasMeasTime, (imuSampleTime_ms - _msecTasDelay));
-//    } else {
-//        newDataTas = false;
-//    }
-//}
 
 void NavEKF2::readAirSpdData()    // modified for predictor stuff
 {
@@ -3953,38 +3793,12 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
         VtasMeas1 = aspeed->get_airspeed() * aspeed->get_EAS2TAS();
 
         storeDataFloat(VtasMeas1, storedTas, lastTasStoreTime_ms, TasTimeStamp, storeIndexTas, lastAirspeedUpdate1);
-
-//        if (lastAirspeedUpdate1 - lastTasStoreTime_ms >= 10) {
-//            lastTasStoreTime_ms = lastAirspeedUpdate1;
-//            if (storeIndexTas > (BUFFER_SIZE-1)) {
-//                storeIndexTas = 0;
-//            }
-//            storedTas[storeIndexTas] = VtasMeas1;
-//            TasTimeStamp[storeIndexTas] = lastTasStoreTime_ms;
-//            storeIndexTas = storeIndexTas + 1;
-//        }
     }
+
     uint32_t bestTimeDelta;
     uint16_t bestStoreIndex;
 
     BestIndex(bestTimeDelta, bestStoreIndex, TasTimeStamp, _msecEkfDelay, _msecTasDelay);
-
-//        uint32_t timeDeltaTas;
-//        uint32_t bestTimeDeltaTas = 200;
-
- //       float Vtas_Delayed;
-
-
-//        for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
-//        {
-//            timeDeltaTas = abs( (imuSampleTime_ms - TasTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY) + _msecTasDelay);
-//            if (timeDeltaTas < bestTimeDeltaTas)
-//            {
-//                bestStoreIndex = i;
-//                bestTimeDeltaTas = timeDeltaTas;
-//            }
-//        }
-
 
         if ((lastAirspeedUpdate !=  TasTimeStamp[bestStoreIndex]) && bestTimeDelta < MAX_MSERR){
             lastAirspeedUpdate = TasTimeStamp[bestStoreIndex];
@@ -3992,8 +3806,8 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
             // let other processes know that new Vtas data has arrived
             newDataTas = true;
             // get states stored at time closest to measurement time after allowance for measurement delay
-            RecallStates(statesAtVtasMeasTime, (imuSampleTime_ms - _msecTasDelay));  // this should be deleted later on
-//            printf("%u and %u and %u and %u\n",imuSampleTime_ms-lastAirspeedUpdate,lastAirspeedUpdate1-lastAirspeedUpdate,bestTimeDelta,_msecTasDelay);
+            RecallStates(statesAtVtasMeasTime, (imuSampleTime_ms - constrain_int16(_msecTasDelay, 0, MAX_MSDELAY)));  // this should be deleted later on
+//        printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms,imuSampleTime_ms-lastAirspeedUpdate,lastAirspeedUpdate1-lastAirspeedUpdate,bestTimeDelta,constrain_int16(_msecTasDelay, 0, MAX_MSDELAY));
             }
         else {
         newDataTas = false;

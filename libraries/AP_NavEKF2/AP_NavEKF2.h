@@ -125,6 +125,7 @@ public:
     uint32_t HgtTimeStamp[BUFFER_SIZE];    		  // sean
     uint32_t lastHealthyHgtTime_ms; // Sean time the barometer was last declared healthy
     float Hgt_Delayed;
+    uint32_t lastHgtTimeBuffer[BUFFER_SIZE];
     //uint32_t bestTimeDeltaHgt;
 
     uint16_t storeIndexD;						// sean

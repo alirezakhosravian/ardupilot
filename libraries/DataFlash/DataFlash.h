@@ -425,6 +425,32 @@ struct PACKED log_ANU4 {
     uint8_t staticmode;
 };
 
+struct PACKED log_ANU5 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    float a1;
+    float a2;
+    float a3;
+    float a4;
+    float v1x;
+    float v1y;
+    float v1z;
+    float p1x;
+    float p1y;
+    float p1z;
+    };
+
+struct PACKED log_ANU6 {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    float v2x;
+    float v2y;
+    float v2z;
+    float p2x;
+    float p2y;
+    float p2z;
+    };
+
 struct PACKED log_Cmd {
     LOG_PACKET_HEADER;
     uint32_t time_ms;
@@ -696,6 +722,10 @@ Format characters in the format string for binary log messages
       "ANU3","Icccccchhhc","TimeMS,IVN,IVE,IVD,IPN,IPE,IPD,IMX,IMY,IMZ,IVT" }, \
     { LOG_ANU4_MSG, sizeof(log_ANU4), \
       "ANU4","IcccccccbbBB","TimeMS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,StaticMode" }, \
+    { LOG_ANU5_MSG, sizeof(log_ANU5), \
+      "ANU5","Iffffffffff","TimeMS,a1,a2,a3,a4,v1x,v1y,v1z,p1x,p1y,p1z" }, \
+    { LOG_ANU6_MSG, sizeof(log_ANU6), \
+      "ANU6","Iffffff","TimeMS,v2x,v2y,v2z,p2x,p2y,p2z" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","IBLLHffHH","TimeMS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_UBX1_MSG, sizeof(log_Ubx1), \
@@ -805,6 +835,8 @@ Format characters in the format string for binary log messages
 #define LOG_ANU2_MSG      180
 #define LOG_ANU3_MSG      181
 #define LOG_ANU4_MSG      182
+#define LOG_ANU5_MSG      183
+#define LOG_ANU6_MSG      184
 
 // message types 200 to 210 reversed for GPS driver use
 // message types 211 to 220 reversed for autotune use

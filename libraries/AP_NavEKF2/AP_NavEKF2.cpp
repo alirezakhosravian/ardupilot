@@ -4041,8 +4041,8 @@ void NavEKF2::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint
     for (int i=0; i<=(BUFFER_SIZE-1); i++)
     {
         time_delta = imuSampleTime_ms - timeStamp[i] - tmpvar1+tmpvar2;
-        time_delta=abs(time_delta);
-        if (time_delta < closestTime)
+        // time_delta=abs(time_delta);
+        if ((time_delta >=0) && (time_delta < closestTime))
         {
             closestStoreIndex = i;
             closestTime = time_delta;

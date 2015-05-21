@@ -240,11 +240,11 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
     if (ahrs.get_secondary_attitude(euler, 1) && ahrs.get_secondary_position(loc, 1)) {
         NavEKF2 &ekf2 = ahrs.get_NavEKF2();
         Vector3f pos;
-        ekf2.get_Predictor().getPositionPrediction(pos);
-        float v1 = pos.x;
-        float v2 = pos.y;
-        float v3 = pos.z;
-        float v4 = 0;
+        float v1;
+        float v2;
+        float v3;
+        float v4;
+        ekf2.get_Predictor().getSwitchPrediction(v1,v2,v3,v4,ekf2.pred_sel);
         mavlink_msg_ahrs3_send(chan,
                                euler.x,
                                euler.y,

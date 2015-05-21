@@ -32,7 +32,7 @@ public:
     void getPosition2Prediction(Vector3f &pos);
     void getVelocityPrediction(Vector3f &vel);
     void getVelocity2Prediction(Vector3f &vel);
-
+    void getSwitchPrediction(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
 
 
 private:

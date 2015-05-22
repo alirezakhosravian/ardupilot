@@ -19,6 +19,36 @@ AP_Predictors::AP_Predictors()
 
 void AP_Predictors::AttitudeModel(Vector3f tilde_q)
 {
+  // Initializing quaternion vectors such that they have unit amplitude
+  if (init_reset==0) {
+        D_q[0]=1;
+        D_q[1]=0;
+        D_q[2]=0;
+        D_q[3]=0;
+
+        D_q_k1[0]=1;
+        D_q_k1[1]=0;
+        D_q_k1[2]=0;
+        D_q_k1[3]=0;
+
+        delta_q[0]=1;
+        delta_q[1]=0;
+        delta_q[2]=0;
+        delta_q[3]=0;
+//
+
+        for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++) {
+            storedD[i].q1 =1;
+            storedD[i].q2 =0;
+            storedD[i].q3 =0;
+            storedD[i].q4 =0;
+        }
+        init_reset=1;
+    }
+
+
+
+
  //   imuSampleTime_ms = hal.scheduler->millis();
 
     D_q = D_q_k1;
@@ -106,6 +136,8 @@ void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex
 
 void AP_Predictors::AttitudePredictor(Quaternion quat)
 {
+    Quaternion q_tmp;
+
     D_Delay = storedD[bestStoreIndexD];
 
 // D_q_delay^{-1}
@@ -214,6 +246,7 @@ void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_In
 // picking up the delayed d_v
     Vector3f d_v_m_Delay=storedd_v_m[bestStoreIndexd_v_m];
 
+    Quaternion q_tmp;
 // D_q_delay^{-1}
     q_tmp[0]= D_Delay[0];
     q_tmp[1]= -D_Delay[1];

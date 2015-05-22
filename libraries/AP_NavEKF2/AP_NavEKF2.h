@@ -573,26 +573,26 @@ private:
 
     /////////////////////////// Sean: (12 - 15)/12/2014 -- Predictor ///////////////////////////////////////////////////////////
 
-    Matrix3f D;
-    Matrix3f D_T;
-    Quaternion D_q;
-    Quaternion D_q_k1;
-    float n_D_q_k1;
-    Quaternion q_hat;   //sean prediction of the current quaternion
-    Quaternion q_hat_T_k1;
-    Vector3f tilde_q;
-    float n_tilde_q;
-    Quaternion delta_q;
-    Matrix3f R_hat_T;
-    Matrix3f R_hat;
-    Vector3f d_v;
-    Vector3f v_hat; // prediction of current velocity
-    Vector3f d_p;
-    Vector3f p_hat; // prediction of current position
-    Vector3f v_hat_m; // prediction of current velocity mixed-invariant
-    Vector3f d_p_m;
-    Vector3f p_hat_m; // prediction of current position mixed-invariant
-    Vector3f d_v_m;  // mixed-invariant
+//    Matrix3f D;
+//    Matrix3f D_T;
+//    Quaternion D_q;
+//    Quaternion D_q_k1;
+//    float n_D_q_k1;
+//    Quaternion q_hat;   //sean prediction of the current quaternion
+//    Quaternion q_hat_T_k1;
+//    Vector3f tilde_q;
+//    float n_tilde_q;
+//    Quaternion delta_q;
+//    Matrix3f R_hat_T;
+//    Matrix3f R_hat;
+//    Vector3f d_v;
+//    Vector3f v_hat; // prediction of current velocity
+//    Vector3f d_p;
+//   Vector3f p_hat; // prediction of current position
+//   Vector3f v_hat_m; // prediction of current velocity mixed-invariant
+//    Vector3f d_p_m;
+ //   Vector3f p_hat_m; // prediction of current position mixed-invariant
+//    Vector3f d_v_m;  // mixed-invariant
 
     Vector3f tilde_Vel;
     Vector3f corrected_tilde_Vel1;

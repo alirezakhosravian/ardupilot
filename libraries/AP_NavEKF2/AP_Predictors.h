@@ -27,11 +27,11 @@ public:
     void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTauDelay);
     void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
     void storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex);
-    void getAttitudePrediction(Quaternion &att);
-    void getPositionPrediction(Vector3f &pos);
-    void getPosition2Prediction(Vector3f &pos);
-    void getVelocityPrediction(Vector3f &vel);
-    void getVelocity2Prediction(Vector3f &vel);
+    void getAttitudePrediction(Quaternion &att) const;
+    void getPositionPrediction(Vector3f &pos) const;
+    void getPosition2Prediction(Vector3f &pos) const;
+    void getVelocityPrediction(Vector3f &vel) const;
+    void getVelocity2Prediction(Vector3f &vel) const;
     void getSwitchPrediction(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
 
 

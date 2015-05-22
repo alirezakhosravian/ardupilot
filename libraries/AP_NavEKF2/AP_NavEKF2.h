@@ -139,7 +139,7 @@ public:
     VectorN<Vector3f,BUFFER_SIZE> storedd_v_m;       //  sean buffer for delta corrsponding to velocity prediction mixed-invariant
     uint32_t ctr_rst;  // reset predictor cntr
 
-    AP_Int8 pred_sel;
+    AP_Int8 est_sel;
 
     uint32_t lastFixTime_ms1;
     uint32_t secondLastFixTime_ms1;
@@ -186,9 +186,11 @@ public:
     // return the last calculated NED position relative to the reference point (m).
     // return false if no position is available
     bool getPosNED(Vector3f &pos) const;
+    bool getPosNED2(Vector3f &pos) const;
 
     // return NED velocity in m/s
     void getVelNED(Vector3f &vel) const;
+    void getVelNED2(Vector3f &vel) const;
 
     // return body axis gyro bias estimates in rad/sec
     void getGyroBias(Vector3f &gyroBias) const;
@@ -216,6 +218,9 @@ public:
 
     // return the Euler roll, pitch and yaw angle in radians
     void getEulerAngles(Vector3f &eulers) const;
+    void getEulerAngles2(Vector3f &eulers) const;
+
+    void getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
 
 // sean return v1
 //    void getv1(float &v1) const;
@@ -452,6 +457,9 @@ private:
     uint16_t _msecMagAvg;           // average number of msec between magnetometer measurements
     uint16_t _msecBetaAvg;          // maximum number of msec between synthetic sideslip measurements
     float dtVelPos;                 // average of msec between position and velocity corrections
+
+    AP_Int8 vel_pred_sel;
+    AP_Int8 pos_pred_sel;
 
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised

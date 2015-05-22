@@ -268,27 +268,27 @@ void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_In
     v_hat_m = velocity + gravityNED*(0.001f*constrain_int16(_msecTauDelay, 0, MAX_MSDELAY))+Tbn_temp*(d_v_m- d_v_m_Delay);
 }
 
-void AP_Predictors::getAttitudePrediction(Quaternion &att)
+void AP_Predictors::getAttitudePrediction(Quaternion &att) const
 {
     att = q_hat;
 }
 
-void AP_Predictors::getPositionPrediction(Vector3f &pos)
+void AP_Predictors::getPositionPrediction(Vector3f &pos) const
 {
     pos = p_hat;
 }
 
-void AP_Predictors::getPosition2Prediction(Vector3f &pos)
+void AP_Predictors::getPosition2Prediction(Vector3f &pos) const
 {
     pos = p_hat_m;
 }
 
-void AP_Predictors::getVelocityPrediction(Vector3f &vel)
+void AP_Predictors::getVelocityPrediction(Vector3f &vel) const
 {
     vel = v_hat;
 }
 
-void AP_Predictors::getVelocity2Prediction(Vector3f &vel)
+void AP_Predictors::getVelocity2Prediction(Vector3f &vel) const
 {
     vel = v_hat_m;
 }

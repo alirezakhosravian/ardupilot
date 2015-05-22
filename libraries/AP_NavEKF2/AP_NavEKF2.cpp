@@ -352,7 +352,21 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("PRED_SEL",      36, NavEKF2,  pred_sel, 0),
+    AP_GROUPINFO("EST_SEL",      36, NavEKF2,  est_sel, 0),
+
+    // @Param: PRED_SEL
+    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
+    // @Description:
+    // @Values:
+    // @User: Advanced
+    AP_GROUPINFO("VEL_PRED_SEL",      37, NavEKF2,  vel_pred_sel, 0),
+
+    // @Param: PRED_SEL
+    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
+    // @Description:
+    // @Values:
+    // @User: Advanced
+    AP_GROUPINFO("POS_PRED_SEL",      38, NavEKF2,  pos_pred_sel, 0),
 
     AP_GROUPEND
 };
@@ -2934,17 +2948,19 @@ void NavEKF2::quat2Tbn(Matrix3f &Tbn, const Quaternion &quat) const
 }
 
 // return the Euler roll, pitch and yaw angle in radians
-void NavEKF2::getEulerAngles(Vector3f &euler) const
+void NavEKF2::getEulerAngles2(Vector3f &euler) const
 {
     state.quat.to_euler(euler.x, euler.y, euler.z);
     euler = euler - _ahrs->get_trim();
 }
 
-//void NavEKF2::getEulerAngles(Vector3f &euler) const   //loging predictor states rather than EKF2 sates
-//{
-//    test_Predictor.q_hat.to_euler(euler.x, euler.y, euler.z);
-//    euler = euler - _ahrs->get_trim();
-//}
+void NavEKF2::getEulerAngles(Vector3f &euler) const   //loging predictor states rather than EKF2 sates
+{
+    Quaternion quat;
+    test_Predictor.getAttitudePrediction(quat);
+    quat.to_euler(euler.x, euler.y, euler.z);
+    euler = euler - _ahrs->get_trim();
+}
 
 /*
 // Sean v1-v4 filling
@@ -2955,34 +2971,81 @@ void NavEKF2::getv1(float &v1) const
 */
 
 // return NED velocity in m/s
-void NavEKF2::getVelNED(Vector3f &vel) const  //loging predictor states rather than EKF2 sates
+void NavEKF2::getVelNED2(Vector3f &vel) const  //loging predictor states rather than EKF2 sates
 {
     vel = state.velocity;
 }
 
-//void NavEKF2::getVelNED(Vector3f &vel) const
-//{
-//    vel = test_Predictor.v_hat_m;
-//}
+void NavEKF2::getVelNED(Vector3f &vel) const
+{
+    if(vel_pred_sel == 0)
+    {
+        test_Predictor.getVelocity2Prediction(vel);
+    }
+    else
+    {
+        test_Predictor.getVelocityPrediction(vel);
+    }
+}
 
 
 // return the last calculated NED position relative to the reference point (m).
 // return false if no position is available
 
-bool NavEKF2::getPosNED(Vector3f &pos) const  //loging predictor states rather than EKF2 sates
+bool NavEKF2::getPosNED2(Vector3f &pos) const  //loging predictor states rather than EKF2 sates
 {
     pos = state.position;
     return true;
 }
 
+bool NavEKF2::getPosNED(Vector3f &pos) const
+{
+    if(pos_pred_sel == 0)
+    {
+        test_Predictor.getPosition2Prediction(pos);
+        return true;
+    }
+    else
+    {
+        test_Predictor.getPositionPrediction(pos);
+        return true;
+    }
+}
 
-
-//bool NavEKF2::getPosNED(Vector3f &pos) const
-//{
-//    pos = test_Predictor.p_hat_m;
-//    return true;
-//}
-
+void NavEKF2::getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel)
+{
+        if(sel == 0)
+        {
+            Vector3f euler;
+            state.quat.to_euler(euler.x, euler.y, euler.z);
+            euler = euler - _ahrs->get_trim();
+            f1 = euler.x;
+            f2 = euler.y;
+            f3 = euler.z;
+            f4 = 0;
+        }
+        else if(sel == 1)
+        {
+            f1 = state.position.x;
+            f2 = state.position.y;
+            f3 = state.position.z;
+            f4 = 0;
+        }
+        else if(sel == 2)
+        {
+            f1 = state.velocity.x;
+            f2 = state.velocity.y;
+            f3 = state.velocity.z;
+            f4 = 0;
+        }
+        else
+        {
+            f1 = 0;
+            f2 = 0;
+            f3 = 0;
+            f4 = 0;
+        }
+}
 
 // return body axis gyro bias estimates in rad/sec
 void NavEKF2::getGyroBias(Vector3f &gyroBias) const

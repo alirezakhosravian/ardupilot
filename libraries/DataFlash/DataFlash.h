@@ -450,7 +450,6 @@ struct PACKED log_ANU5 {
     float a1;
     float a2;
     float a3;
-    float a4;
     float v1x;
     float v1y;
     float v1z;
@@ -755,7 +754,7 @@ Format characters in the format string for binary log messages
     { LOG_ANU4_MSG, sizeof(log_ANU4), \
       "ANU4","QcccccccbbBB","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,StaticMode" }, \
     { LOG_ANU5_MSG, sizeof(log_ANU5), \
-      "ANU5","Qffffffffff","TimeUS,a1,a2,a3,a4,v1x,v1y,v1z,p1x,p1y,p1z" }, \
+      "ANU5","Qfffffffff","TimeUS,a1,a2,a3,v1x,v1y,v1z,p1x,p1y,p1z" }, \
     { LOG_ANU6_MSG, sizeof(log_ANU6), \
       "ANU6","Qffffff","TimeUS,v2x,v2y,v2z,p2x,p2y,p2z" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \

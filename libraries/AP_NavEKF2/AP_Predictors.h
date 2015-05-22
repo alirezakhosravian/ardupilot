@@ -49,7 +49,6 @@ private:
     Quaternion D_q_k1;
     float n_D_q_k1;
 
-    Quaternion q_hat_T_k1;
     float n_tilde_q;
     Quaternion delta_q;
     Matrix3f R_hat_T;
@@ -132,8 +131,8 @@ private:
     float init_reset;   // reset initial quaternions
 
     float rotScaler;
-    Vector3f D_q_tmp;
-    Quaternion q_tmp;
+//    Vector3f D_q_tmp;
+
 
     uint32_t bestTime;
     uint16_t bestStoreIndex;

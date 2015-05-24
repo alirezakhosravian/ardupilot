@@ -93,10 +93,15 @@ public:
 
     uint16_t storeIndexIMU;						// arash
     uint32_t lastAngRateStoreTime_ms;		 // sean
-    VectorN<Vector3f,BUFFER_SIZE> storedAngRate;       //  sean
+    VectorN<Vector3f,BUFFER_SIZE> storeddAngIMU;       //  sean
     VectorN<Vector3f,BUFFER_SIZE> storeddVelIMU1; //sean
     VectorN<Vector3f,BUFFER_SIZE>  storeddVelIMU2; //sean
     uint32_t angRateTimeStamp[BUFFER_SIZE];    		  // sean
+    VectorN<ftype,BUFFER_SIZE>  storeddtIMU;
+    ftype dtIMU1;
+    Vector3f dAngIMU1;
+    Vector3f dVelIMU11;
+    Vector3f dVelIMU21;
 
     uint16_t storeIndexVel;
     uint32_t lastVelStoreTime_ms;

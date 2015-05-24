@@ -347,7 +347,7 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     // @User: Advanced
     AP_GROUPINFO("BARO_DELAY",    35, NavEKF2, _msecHgtDelay, 80),
 
-    // @Param: PRED_SEL
+    // @Param: EST_SEL
     // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
     // @Description:
     // @Values:
@@ -355,18 +355,11 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     AP_GROUPINFO("EST_SEL",      36, NavEKF2,  est_sel, 0),
 
     // @Param: PRED_SEL
-    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
+    // @DisplayName: Selection of which predictor output to set to feed into the control.
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("VEL_PRED_SEL",      37, NavEKF2,  vel_pred_sel, 0),
-
-    // @Param: PRED_SEL
-    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
-    // @Description:
-    // @Values:
-    // @User: Advanced
-    AP_GROUPINFO("POS_PRED_SEL",      38, NavEKF2,  pos_pred_sel, 0),
+    AP_GROUPINFO("PRED_SEL",      37, NavEKF2,  pred_sel, 0),
 
     AP_GROUPEND
 };
@@ -2925,13 +2918,13 @@ void NavEKF2::getVelNED2(Vector3f &vel) const  //loging predictor states rather 
 
 void NavEKF2::getVelNED(Vector3f &vel) const
 {
-    if(vel_pred_sel == 0)
+    if(pred_sel == 0)
     {
-        test_Predictor.getVelocity2Prediction(vel);
+        test_Predictor.getVelocityPrediction(vel);
     }
     else
     {
-        test_Predictor.getVelocityPrediction(vel);
+        test_Predictor.getVelocity2Prediction(vel);
     }
 }
 
@@ -2947,14 +2940,14 @@ bool NavEKF2::getPosNED2(Vector3f &pos) const  //loging predictor states rather 
 
 bool NavEKF2::getPosNED(Vector3f &pos) const
 {
-    if(pos_pred_sel == 0)
+    if(pred_sel == 0)
     {
-        test_Predictor.getPosition2Prediction(pos);
+        test_Predictor.getPositionPrediction(pos);
         return true;
     }
     else
     {
-        test_Predictor.getPositionPrediction(pos);
+        test_Predictor.getPosition2Prediction(pos);
         return true;
     }
 }
@@ -2973,12 +2966,21 @@ void NavEKF2::getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 
         }
         else if(sel == 1)
         {
+            struct Location tmp_loc;
+            getLLH2(tmp_loc);
+            f1 = tmp_loc.lat;
+            f2 = tmp_loc.lng;
+            f3 = tmp_loc.alt;
+            f4 = 0;
+        }
+        else if(sel == 2)
+        {
             f1 = state.position.x;
             f2 = state.position.y;
             f3 = state.position.z;
             f4 = 0;
         }
-        else if(sel == 2)
+        else if(sel == 3)
         {
             f1 = state.velocity.x;
             f2 = state.velocity.y;
@@ -3059,8 +3061,9 @@ void NavEKF2::getMagXYZ(Vector3f &magXYZ) const
     magXYZ = state.body_magfield*1000.0f;
 }
 
+
 // return the last calculated latitude, longitude and height
-bool NavEKF2::getLLH(struct Location &loc) const
+bool NavEKF2::getLLH2(struct Location &loc) const
 {
     loc.lat = _ahrs->get_home().lat;
     loc.lng = _ahrs->get_home().lng;
@@ -3068,6 +3071,24 @@ bool NavEKF2::getLLH(struct Location &loc) const
     loc.flags.relative_alt = 0;
     loc.flags.terrain_alt = 0;
     location_offset(loc, state.position.x, state.position.y);
+    return true;
+}
+
+
+// return the last calculated latitude, longitude and height calculated by the sellected predictor via pred_sel
+bool NavEKF2::getLLH(struct Location &loc) const
+{
+    Vector3f tmp_pos;
+
+    // get prosition from the sellected predictor
+    getPosNED(tmp_pos);
+
+    loc.lat = _ahrs->get_home().lat;
+    loc.lng = _ahrs->get_home().lng;
+    loc.alt = _ahrs->get_home().alt - tmp_pos.z*100;
+    loc.flags.relative_alt = 0;
+    loc.flags.terrain_alt = 0;
+    location_offset(loc, tmp_pos.x, tmp_pos.y);
     return true;
 }
 
@@ -3819,12 +3840,24 @@ void NavEKF2::setWindVelStates()
 }
 
 // return the transformation matrix from XYZ (body) to NED axes
-void NavEKF2::getRotationBodyToNED(Matrix3f &mat) const
+void NavEKF2::getRotationBodyToNED2(Matrix3f &mat) const
 {
     Vector3f trim = _ahrs->get_trim();
     state.quat.rotation_matrix(mat);
     mat.rotateXYinv(trim);
 }
+
+// return the predicted transformation matrix from XYZ (body) to NED axes
+void NavEKF2::getRotationBodyToNED(Matrix3f &mat) const
+{
+    Quaternion quat;
+    test_Predictor.getAttitudePrediction(quat);
+
+    Vector3f trim = _ahrs->get_trim();
+    quat.rotation_matrix(mat);
+    mat.rotateXYinv(trim);
+}
+
 
 // return the innovations for the NED Pos, NED Vel, XYZ Mag and Vtas measurements
 void  NavEKF2::getInnovations(Vector3f &velInnov, Vector3f &posInnov, Vector3f &magInnov, float &tasInnov) const

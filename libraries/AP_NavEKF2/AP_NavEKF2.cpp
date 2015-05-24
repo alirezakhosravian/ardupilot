@@ -762,6 +762,7 @@ void NavEKF2::SelectVelPosFusion()
                 ResetPosition();
                 ResetVelocity();
                 StoreStatesReset();
+   //ali             printf("GPS Retry Timeout\n");
             }
         } else {
             fuseVelData = false;
@@ -830,6 +831,7 @@ void NavEKF2::SelectMagFusion()
         lastHealthyMagTime_ms = imuSampleTime_ms;
     } else if ((imuSampleTime_ms - lastHealthyMagTime_ms) > _magFailTimeLimit_ms && use_compass()) {
         magTimeout = true;
+//ali        printf("MAG TIMEOUT\n");
     }
 
     // determine if conditions are right to start a new fusion cycle
@@ -840,6 +842,7 @@ void NavEKF2::SelectMagFusion()
         // reset state updates and counter used to spread fusion updates across several frames to reduce 10Hz pulsing
         memset(&magIncrStateDelta[0], 0, sizeof(magIncrStateDelta));
         magUpdateCount = 0;
+//        printf("In MAG dataReady\n");
     }
     else
     {
@@ -905,6 +908,9 @@ void NavEKF2::SelectBetaFusion()
 // update the quaternion, velocity and position states using IMU measurements
 void NavEKF2::UpdateStrapdownEquationsNED()
 {
+ //ali   printf("%u and %d and %d and %d and %d and %d FAULTS\n",imuSampleTime_ms, faultStatus.bad_xmag, faultStatus.bad_ymag, faultStatus.bad_zmag, faultStatus.bad_airspeed, faultStatus.bad_sideslip);
+ //ali   printf("%u and %d and %d and %d and %d and TIMEOUT\n",imuSampleTime_ms,velTimeout,posTimeout,hgtTimeout,magTimeout);
+
     Vector3f delVelNav;  // delta velocity vector calculated using a blend of IMU1 and IMU2 data
     Vector3f delVelNav1; // delta velocity vector calculated using IMU1 data
     Vector3f delVelNav2; // delta velocity vector calculated using IMU2 data
@@ -914,73 +920,13 @@ void NavEKF2::UpdateStrapdownEquationsNED()
     Quaternion deltaQuat; // quaternion from last to current time step
     const Vector3f gravityNED(0, 0, GRAVITY_MSS); // NED gravity vector m/s^2
 
-
     Matrix3f Tbn_temp;
 
-    uint16_t tmp_index;
-    tmp_index=storeIndexIMU;
-    storeDataVector(dAngIMU, storedAngRate, lastAngRateStoreTime_ms, angRateTimeStamp, storeIndexIMU, imuSampleTime_ms);
-    // Check if new Gyro data is stored. If yes, then store also ACCEL data.
-    if (tmp_index != storeIndexIMU){
-        storeddVelIMU1[storeIndexIMU-1] = dVelIMU1;
-        storeddVelIMU2[storeIndexIMU-1] = dVelIMU2;
-     }
-
-
-//    if (imuSampleTime_ms - lastAngRateStoreTime_ms >= 10) {
-//        lastAngRateStoreTime_ms = imuSampleTime_ms;
-//        if (storeIndexIMU > (BUFFER_SIZE-1)) {
-//            storeIndexIMU = 0;
-//        }
-//        storedAngRate[storeIndexIMU] = dAngIMU;
-//        storeddVelIMU1[storeIndexIMU] = dVelIMU1;
-//        storeddVelIMU2[storeIndexIMU] = dVelIMU2;
-//        angRateTimeStamp[storeIndexIMU] = lastAngRateStoreTime_ms;
-//        storeIndexIMU = storeIndexIMU + 1;
-//    }
-
-    uint32_t timeDeltaAngRate;
-    AP_Int16 tempZeroTime;
-    uint32_t bestTimeDelta = MAX_MSDELAY;
-    uint16_t bestStoreIndex;
-    Vector3f dAngIMU_Delay;
-    Vector3f dVelIMU1_Delay;
-    Vector3f dVelIMU2_Delay;
-
-    BestIndex(bestTimeDelta, bestStoreIndex, angRateTimeStamp, _msecEkfDelay, tempZeroTime);
-//
-//    for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
-//    {
-//        timeDeltaAngRate = abs( (imuSampleTime_ms - angRateTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY));
-//        if (timeDeltaAngRate < bestTimeDeltaAngRate)
-//        {
-//            bestStoreIndex = i;
-//            bestTimeDeltaAngRate = timeDeltaAngRate;
-//        }
-//    }
-    dAngIMU_Delay = storedAngRate[bestStoreIndex];
-    dVelIMU1_Delay=storeddVelIMU1[bestStoreIndex];
-    dVelIMU2_Delay=storeddVelIMU2[bestStoreIndex];
-
-    correctedDelAng = dAngIMU_Delay - state.gyro_bias;
-    correctedDelVel1 = dVelIMU1_Delay;
-    correctedDelVel2 = dVelIMU2_Delay;
+    correctedDelAng = dAngIMU - state.gyro_bias;
+    correctedDelVel1 = dVelIMU1;
+    correctedDelVel2 = dVelIMU2;
     correctedDelVel1.z -= state.accel_zbias1;
     correctedDelVel2.z -= state.accel_zbias2;
-
-
-    /*
-        // remove sensor bias errors
-        correctedDelAng = dAngIMU - state.gyro_bias;
-        correctedDelVel1 = dVelIMU1;
-        correctedDelVel2 = dVelIMU2;
-        correctedDelVel1.z -= state.accel_zbias1;
-        correctedDelVel2.z -= state.accel_zbias2;
-    */
-// end sean
-/////////////////////////////////////////////////////////////
-
-
 
     // use weighted average of both IMU units for delta velocities
     correctedDelVel12 = correctedDelVel1 * IMU1_weighting + correctedDelVel2 * (1.0f - IMU1_weighting);
@@ -1065,10 +1011,10 @@ void NavEKF2::UpdateStrapdownEquationsNED()
 
     /////////////////////////// Sean: (12 - 15)/12/2014 -- Predictor ///////////////////////////////////////////////////////////
     Vector3f tilde_q;
-    tilde_q = dAngIMU - state.gyro_bias;
+    tilde_q = dAngIMU1 - state.gyro_bias;
 
-    corrected_tilde_Vel1 = dVelIMU1;
-    corrected_tilde_Vel2 = dVelIMU2;
+    corrected_tilde_Vel1 = dVelIMU11;
+    corrected_tilde_Vel2 = dVelIMU21;
     corrected_tilde_Vel1.z -= state.accel_zbias1;
     corrected_tilde_Vel2.z -= state.accel_zbias2;
     corrected_tilde_Vel12 =  corrected_tilde_Vel1* IMU1_weighting +  corrected_tilde_Vel2* (1.0f - IMU1_weighting);
@@ -1936,15 +1882,8 @@ void NavEKF2::FuseVelPosNED()
 
 
             // calculate height innovations
-
-
             observation[5]=-hgtMea;
             hgtInnov = statesAtHgtTime.position.z - observation[5];
-
-
-//            hgtInnov = statesAtHgtTime.position.z - observation[5];
-//////////// end sean  //////////////////////////////////////////////////////////////////////
-
 
             varInnovVelPos[5] = P[9][9] + R_OBS[5];
             // calculate the innovation consistency test ratio
@@ -1989,6 +1928,7 @@ void NavEKF2::FuseVelPosNED()
         // fuse measurements sequentially
         for (obsIndex=0; obsIndex<=5; obsIndex++) {
             if (fuseData[obsIndex]) {
+      //         printf("%u and %u and FuseVelPos\n",imuSampleTime_ms,obsIndex);
                 stateIndex = 4 + obsIndex;
                 // calculate the measurement innovation, using states from a different time coordinate if fusing height data
                 // adjust scaling on GPS measurement noise variances if not enough satellites
@@ -2153,6 +2093,7 @@ void NavEKF2::FuseMagnetometer()
         // calculate observation jacobians and Kalman gains
         if (fuseMagData)
         {
+ //       printf("In fuse\n");
             // copy required states to local variable names
             q0       = statesAtMagMeasTime.quat[0];
             q1       = statesAtMagMeasTime.quat[1];
@@ -2263,14 +2204,16 @@ void NavEKF2::FuseMagnetometer()
 
             // reset the observation index to 0 (we start by fusing the X measurement)
             obsIndex = 0;
-
             // set flags to indicate to other processes that fusion has been performed and is required on the next frame
             // this can be used by other fusion processes to avoid fusing on the same frame as this expensive step
             magFusePerformed = true;
             magFuseRequired = true;
+//            newDataMag = false; //ali
+//            fuseMagData = false; //ali
         }
         else if (obsIndex == 1) // we are now fusing the Y measurement
         {
+  //          printf("Inside MAGOBS1\n");
             // calculate observation jacobians
             for (uint8_t i=0; i<=21; i++) H_MAG[i] = 0;
             H_MAG[0] = SH_MAG[2];
@@ -2346,6 +2289,7 @@ void NavEKF2::FuseMagnetometer()
         }
         else if (obsIndex == 2) // we are now fusing the Z measurement
         {
+  //ali          printf("FUSING ZMAG %u\n", obsIndex);
             // calculate observation jacobians
             for (uint8_t i=0; i<=21; i++) H_MAG[i] = 0;
             H_MAG[0] = SH_MAG[1];
@@ -2427,8 +2371,8 @@ void NavEKF2::FuseMagnetometer()
         // calculate the measurement innovation
 //        innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
         innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
-
-
+//ali        printf("%u and %u and %f FuseMag\n",imuSampleTime_ms,obsIndex,magData[obsIndex]);
+ //       printf("%u and MAGobsIndex %u\n",imuSampleTime_ms,obsIndex);
 ////////////////////// end sean
 
         // calculate the innovation test ratio
@@ -2499,6 +2443,7 @@ void NavEKF2::FuseMagnetometer()
             }
         }
         obsIndex = obsIndex + 1;
+ //ali       printf("MAG OBS increased %u\n",obsIndex);
     }
     else
     {
@@ -2608,6 +2553,7 @@ void NavEKF2::FuseAirspeed()
 
         // calculate the measurement innovation
         innovVtas = VtasPred - VtasMeas;
+ //       printf("%u and %f FuseVtas\n",imuSampleTime_ms,VtasMeas);
 
         // calculate the innovation consistency test ratio
         tasTestRatio = sq(innovVtas) / (sq(_tasInnovGate) * varInnovVtas);
@@ -2800,6 +2746,7 @@ void NavEKF2::FuseSideslip()
 
         // calculate predicted sideslip angle and innovation using small angle approximation
         innovBeta = vel_rel_wind.y / vel_rel_wind.x;
+//        printf("%u and %f FuseSideSlip\n",imuSampleTime_ms,innovBeta);
 
         // reject measurement if greater than 3-sigma inconsistency
         if (innovBeta > 0.5f) {
@@ -3326,6 +3273,50 @@ void NavEKF2::ConstrainStates()
     for (uint8_t i=19; i<=21; i++) states[i] = constrain_float(states[i],-0.5f,0.5f);
 }
 
+//// update IMU delta angle and delta velocity measurements
+//void NavEKF2::readIMUData()
+//{
+//    Vector3f angRate;   // angular rate vector in XYZ body axes measured by the IMU (rad/s)
+//    Vector3f accel1;    // acceleration vector in XYZ body axes measured by IMU1 (m/s^2)
+//    Vector3f accel2;    // acceleration vector in XYZ body axes measured by IMU2 (m/s^2)
+//
+//    // the imu sample time is sued as a common time reference throughout the filter
+//    imuSampleTime_ms = hal.scheduler->millis();
+//
+//    // limit IMU delta time to prevent numerical problems elsewhere
+//    dtIMU = constrain_float(_ahrs->get_ins().get_delta_time(), 0.001f, 1.0f);
+//
+//    // get accels and gyro data from dual sensors if healthy
+//    if (_ahrs->get_ins().get_accel_health(0) && _ahrs->get_ins().get_accel_health(1)) {
+//        accel1 = _ahrs->get_ins().get_accel(0);
+//        accel2 = _ahrs->get_ins().get_accel(1);
+//    } else {
+//        accel1 = _ahrs->get_ins().get_accel();
+//        accel2 = accel1;
+//    }
+//
+//    // average the available gyro sensors
+//    angRate.zero();
+//    uint8_t gyro_count = 0;
+//    for (uint8_t i = 0; i<_ahrs->get_ins().get_gyro_count(); i++) {
+//        if (_ahrs->get_ins().get_gyro_health(i)) {
+//            angRate += _ahrs->get_ins().get_gyro(i);
+//            gyro_count++;
+//        }
+//    }
+//    if (gyro_count != 0) {
+//        angRate /= gyro_count;
+//    }
+//
+//    // trapezoidal integration
+//    dAngIMU     = (angRate + lastAngRate) * dtIMU * 0.5f;
+//    lastAngRate = angRate;
+//    dVelIMU1    = (accel1 + lastAccel1) * dtIMU * 0.5f;
+//    lastAccel1  = accel1;
+//    dVelIMU2    = (accel2 + lastAccel2) * dtIMU * 0.5f;
+//    lastAccel2  = accel2;
+//}
+
 // update IMU delta angle and delta velocity measurements
 void NavEKF2::readIMUData()
 {
@@ -3333,11 +3324,14 @@ void NavEKF2::readIMUData()
     Vector3f accel1;    // acceleration vector in XYZ body axes measured by IMU1 (m/s^2)
     Vector3f accel2;    // acceleration vector in XYZ body axes measured by IMU2 (m/s^2)
 
+
+//    uint32_t imuSampleTime_ms1;
+
     // the imu sample time is sued as a common time reference throughout the filter
     imuSampleTime_ms = hal.scheduler->millis();
 
     // limit IMU delta time to prevent numerical problems elsewhere
-    dtIMU = constrain_float(_ahrs->get_ins().get_delta_time(), 0.001f, 1.0f);
+    dtIMU1 = constrain_float(_ahrs->get_ins().get_delta_time(), 0.001f, 1.0f);
 
     // get accels and gyro data from dual sensors if healthy
     if (_ahrs->get_ins().get_accel_health(0) && _ahrs->get_ins().get_accel_health(1)) {
@@ -3362,13 +3356,70 @@ void NavEKF2::readIMUData()
     }
 
     // trapezoidal integration
-    dAngIMU     = (angRate + lastAngRate) * dtIMU * 0.5f;
+    dAngIMU1  = (angRate + lastAngRate) * dtIMU * 0.5f;
     lastAngRate = angRate;
-    dVelIMU1    = (accel1 + lastAccel1) * dtIMU * 0.5f;
+    dVelIMU11    = (accel1 + lastAccel1) * dtIMU * 0.5f;
     lastAccel1  = accel1;
-    dVelIMU2    = (accel2 + lastAccel2) * dtIMU * 0.5f;
+    dVelIMU21    = (accel2 + lastAccel2) * dtIMU * 0.5f;
     lastAccel2  = accel2;
+
+
+//    uint16_t tmp_index;
+//    tmp_index=storeIndexIMU;
+//    printf("%u\n",imuSampleTime_ms);
+//    storeDataVector(dAngIMU1, storeddAngIMU, lastAngRateStoreTime_ms, angRateTimeStamp, storeIndexIMU, imuSampleTime_ms1);
+//    // Check if new Gyro data is stored. If yes, then store also ACCEL data and dtIMU.
+//    if (tmp_index != storeIndexIMU){
+//        printf("%u\n",storeIndexIMU);
+//        storeddVelIMU1[storeIndexIMU-1] = dVelIMU11;
+//        storeddVelIMU2[storeIndexIMU-1] = dVelIMU21;
+//        storeddtIMU[storeIndexIMU-1] = dtIMU1;
+//     }
+
+
+
+        lastAngRateStoreTime_ms = imuSampleTime_ms;
+        if (storeIndexIMU > (BUFFER_SIZE-1)) {
+            storeIndexIMU = 0;
+        }
+        storeddAngIMU[storeIndexIMU] = dAngIMU1;
+        storeddVelIMU1[storeIndexIMU] = dVelIMU11;
+        storeddVelIMU2[storeIndexIMU] = dVelIMU21;
+        storeddtIMU[storeIndexIMU] = dtIMU1;
+        angRateTimeStamp[storeIndexIMU] = lastAngRateStoreTime_ms;
+        storeIndexIMU = storeIndexIMU + 1;
+
+
+//    uint32_t timeDeltaAngRate;
+
+    AP_Int16 tempZeroTime;
+    uint32_t bestTimeDelta;
+    uint16_t bestStoreIndex;
+//    Vector3f dAngIMU_Delay;
+//    Vector3f dVelIMU1_Delay;
+//    Vector3f dVelIMU2_Delay;
+
+    BestIndex(bestTimeDelta, bestStoreIndex, angRateTimeStamp, _msecEkfDelay, tempZeroTime);
+//
+//    for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
+//    {
+//        timeDeltaAngRate = abs( (imuSampleTime_ms - angRateTimeStamp[i]) - constrain_int16(_msecEkfDelay, 0, MAX_MSDELAY));
+//        if (timeDeltaAngRate < bestTimeDeltaAngRate)
+//        {
+//            bestStoreIndex = i;
+//            bestTimeDeltaAngRate = timeDeltaAngRate;
+//        }
+//    }
+    dAngIMU = storeddAngIMU[bestStoreIndex];
+    dVelIMU1 = storeddVelIMU1[bestStoreIndex];
+    dVelIMU2 = storeddVelIMU2[bestStoreIndex];
+    dtIMU = storeddtIMU[bestStoreIndex];
+//    imuSampleTime_ms = angRateTimeStamp[bestStoreIndex];
+
 }
+
+
+
 
 
 void NavEKF2::readGpsData()  // modified for buffering and predictor use
@@ -3502,14 +3553,17 @@ void NavEKF2::readMagData()
 {
     // buffering data
     // coverting magnetometer reading time from micro seconds to to milliseconds
-    if (use_compass() && ((_ahrs->get_compass()->last_update_usec()/1000) != lastMagUpdate1)){
+
+//    if (use_compass() && ((_ahrs->get_compass()->last_update_usec()/1000) != lastMagUpdate1)){ //the function last_update_usec() has bugs!! it should return new values only every 100 (ms)
+     if (use_compass() && (magData1 != (_ahrs->get_compass()->get_field() * 0.001f))){  // this line replaced the above one since there is a bug in last_update_usec()
         // store time of last measurement update
+        uint32_t temp_tst = lastMagUpdate1;
         lastMagUpdate1 = _ahrs->get_compass()->last_update_usec()/1000;
 
         // Read compass data
         // We scale compass data to improve numerical conditioning
         magData1 = _ahrs->get_compass()->get_field() * 0.001f;
-
+//        printf("%u and %u and %u and %f and %f and %f\n",imuSampleTime_ms,_ahrs->get_compass()->last_update_usec(),temp_tst,magData1.x,magData1.y,magData1.z);
     storeDataVector(magData1, storedMag, lastMagStoreTime_ms, MagTimeStamp, storeIndexMag, lastMagUpdate1);
     }
 
@@ -3517,15 +3571,16 @@ void NavEKF2::readMagData()
     uint16_t bestStoreIndex;
 
     BestIndex(bestTimeDelta, bestStoreIndex, MagTimeStamp, _msecEkfDelay, _msecMagDelay);
-
+        uint32_t tmp_test=lastMagUpdate;
         if ((lastMagUpdate != MagTimeStamp[bestStoreIndex]) && bestTimeDelta < MAX_MSERR){
             lastMagUpdate = MagTimeStamp[bestStoreIndex];
             magData = storedMag[bestStoreIndex];
             // let other processes know that new compass data has arrived
             newDataMag = true;
+//            printf("In newDataMag True\n");
             // get states stored at time closest to measurement time after allowance for measurement delay
             RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - constrain_int16(_msecMagDelay, 0, MAX_MSDELAY)));  // this should be deleted later on
-//        printf("%u and %u and %u and %u and %u\n",imuSampleTime_ms,imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDelta,constrain_int16(_msecMagDelay, 0, MAX_MSDELAY));
+//        printf("%u and %u and %u and %u and %u and %u and %u\n",imuSampleTime_ms,MagTimeStamp[bestStoreIndex],tmp_test,imuSampleTime_ms-lastMagUpdate,lastMagUpdate1-lastMagUpdate,bestTimeDelta,constrain_int16(_msecMagDelay, 0, MAX_MSDELAY));
              }
         else {
         newDataMag = false;
@@ -3568,17 +3623,17 @@ void NavEKF2::readAirSpdData()    // modified for predictor stuff
 
 }
 
-void NavEKF2::storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime)
+void NavEKF2::storeDataFloat(float &dataf, float (&bufferf)[BUFFER_SIZE], uint32_t &lastStoreTimef, uint32_t (&timeStampf)[BUFFER_SIZE], uint16_t &storeIndexf, uint32_t &currentTimef)
 {
 //    uint32_t currentTime = hal.scheduler->millis();
-    if (currentTime - lastStoreTime >= 10) {
-        lastStoreTime = currentTime;
-        if (storeIndex > (BUFFER_SIZE-1)) {
-            storeIndex = 0;
+    if (currentTimef - lastStoreTimef >= 10) {
+        lastStoreTimef = currentTimef;
+        if (storeIndexf > (BUFFER_SIZE-1)) {
+            storeIndexf = 0;
         }
-        buffer[storeIndex]=data;
-        timeStamp[storeIndex] = lastStoreTime;
-        storeIndex = storeIndex + 1;
+        bufferf[storeIndexf]=dataf;
+        timeStampf[storeIndexf] = lastStoreTimef;
+        storeIndexf = storeIndexf + 1;
     }
 }
 
@@ -3820,45 +3875,6 @@ void NavEKF2::ZeroVariables()
     secondLastFixTime_ms = imuSampleTime_ms;
     lastDecayTime_ms = imuSampleTime_ms;
     airborneDetectTime_ms = imuSampleTime_ms;
-
-// sean stuff ///////////////
-    storeIndexIMU = 0;
-    lastAngRateStoreTime_ms = imuSampleTime_ms;
-    memset(&storedAngRate[0], 0, sizeof(storedAngRate));
-    memset(&angRateTimeStamp[0], 0, sizeof(angRateTimeStamp));
-    lastHealthyHgtTime_ms = imuSampleTime_ms;
-/////////////////////////
-
-// Delta Predictor ///////////////
-
-//    D[0][0] = 1;
-//    D[0][1] = 0;
-//    D[0][2] = 0;
-//    D[1][0] = 0;
-//    D[1][1] = 1;
-//    D[1][2] = 0;
-//    D[2][0] = 0;
-//    D[2][1] = 0;
-//    D[2][2] = 1;
-//    D_T = D;
-//    R_hat_T = D;
-//    R_hat = D;
-//    D_q[0] = 1;
-//    D_q[1] = 0;
-//    D_q[2] = 0;
-//    D_q[3] = 0;
-//    D_q_k1 = D_q;
-
-//    q_hat = D_q;
-//    q_hat_T_k1 = D_q;
- //   tilde_q[0] = 1;
-//    tilde_q[1] = 0;
-//    tilde_q[2] = 0;
-//    n_tilde_q = 1;
-//    delta_q = D_q;
-
-/////////////////////////
-
     gpsNoiseScaler = 1.0f;
     velTimeout = false;
     posTimeout = false;

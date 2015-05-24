@@ -219,6 +219,8 @@ public:
     void getMagXYZ(Vector3f &magXYZ) const;
 
     // return the last calculated latitude, longitude and height
+    bool getLLH2(struct Location &loc) const;
+    // return the last predicted latitude, longitude and height from the sellected predictor
     bool getLLH(struct Location &loc) const;
 
     // return the Euler roll, pitch and yaw angle in radians
@@ -231,6 +233,8 @@ public:
 //    void getv1(float &v1) const;
 
     // return the transformation matrix from XYZ (body) to NED axes
+    void getRotationBodyToNED2(Matrix3f &mat) const;
+    // return the predicted transformation matrix from XYZ (body) to NED axes
     void getRotationBodyToNED(Matrix3f &mat) const;
 
     // return the quaternions defining the rotation from NED to XYZ (body) axes
@@ -463,8 +467,7 @@ private:
     uint16_t _msecBetaAvg;          // maximum number of msec between synthetic sideslip measurements
     float dtVelPos;                 // average of msec between position and velocity corrections
 
-    AP_Int8 vel_pred_sel;
-    AP_Int8 pos_pred_sel;
+    AP_Int8 pred_sel;
 
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised

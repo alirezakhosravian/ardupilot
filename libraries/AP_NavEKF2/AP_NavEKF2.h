@@ -1,8 +1,11 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
-  22 state EKF based on https://github.com/priseborough/InertialNav
-int16
-  Converted from Matlab to C++ by Paul Riseborough
+  This library is based on the original work of Paul Riseborough.
+  A 22 state EKF based on https://github.com/priseborough/InertialNav
+
+  This library has been modified by Alireza Khosravian and Sean O'Brien in order to be combined
+  with the predictor library AP_Predictors in order to effectively compensate for measurement delays.
+  This filter combined with AP_Predictors is particularly useful when dealing with large sensor delays.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -91,12 +94,12 @@ public:
     void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime);
     AP_Int16 _msecEkfDelay;
 
-    uint16_t storeIndexIMU;						// arash
-    uint32_t lastAngRateStoreTime_ms;		 // sean
-    VectorN<Vector3f,BUFFER_SIZE> storeddAngIMU;       //  sean
-    VectorN<Vector3f,BUFFER_SIZE> storeddVelIMU1; //sean
-    VectorN<Vector3f,BUFFER_SIZE>  storeddVelIMU2; //sean
-    uint32_t angRateTimeStamp[BUFFER_SIZE];    		  // sean
+    uint16_t storeIndexIMU;
+    uint32_t lastAngRateStoreTime_ms;
+    VectorN<Vector3f,BUFFER_SIZE> storeddAngIMU;
+    VectorN<Vector3f,BUFFER_SIZE> storeddVelIMU1;
+    VectorN<Vector3f,BUFFER_SIZE>  storeddVelIMU2;
+    uint32_t angRateTimeStamp[BUFFER_SIZE];
     VectorN<ftype,BUFFER_SIZE>  storeddtIMU;
     ftype dtIMU1;
     Vector3f dAngIMU1;
@@ -105,51 +108,34 @@ public:
 
     uint16_t storeIndexVel;
     uint32_t lastVelStoreTime_ms;
-    VectorN<Vector3f,BUFFER_SIZE> storedVel;       //  sean
-    uint32_t VelTimeStamp[BUFFER_SIZE];    		  // sean
+    VectorN<Vector3f,BUFFER_SIZE> storedVel;
+    uint32_t VelTimeStamp[BUFFER_SIZE];
     float storedgpsNoiseScaler[BUFFER_SIZE];
     AP_Int8 stored_fusionModeGPS[BUFFER_SIZE];
     VectorN<Vector2f,BUFFER_SIZE> storedgpsPosNE;
 
-
     uint16_t storeIndexMag;
     uint32_t lastMagStoreTime_ms;
-    VectorN<Vector3f,BUFFER_SIZE> storedMag;       //  sean
-    uint32_t MagTimeStamp[BUFFER_SIZE];    		  // sean
+    VectorN<Vector3f,BUFFER_SIZE> storedMag;
+    uint32_t MagTimeStamp[BUFFER_SIZE];
 
 
-    uint16_t storeIndexTas;              // sean
-    uint32_t lastTasStoreTime_ms;           // sean
-    float storedTas[BUFFER_SIZE];                 // sean
-    uint32_t TasTimeStamp[BUFFER_SIZE];    		  // sean
-    //uint32_t bestTimeDeltaTas;
+    uint16_t storeIndexTas;
+    uint32_t lastTasStoreTime_ms;
+    float storedTas[BUFFER_SIZE];
+    uint32_t TasTimeStamp[BUFFER_SIZE];
 
-    uint16_t storeIndexHgt;              // sean
-    uint32_t lastHgtStoreTime_ms;           // sean
-    float storedHgt[BUFFER_SIZE];                 // sean
-    uint32_t HgtTimeStamp[BUFFER_SIZE];    		  // sean
-    uint32_t lastHealthyHgtTime_ms; // Sean time the barometer was last declared healthy
-    float Hgt_Delayed;
+    uint16_t storeIndexHgt;
+    uint32_t lastHgtStoreTime_ms;
+    float storedHgt[BUFFER_SIZE];
+    uint32_t HgtTimeStamp[BUFFER_SIZE];
     uint32_t lastHgtTimeBuffer[BUFFER_SIZE];
-    //uint32_t bestTimeDeltaHgt;
-
-    uint16_t storeIndexD;						// sean
-    uint32_t lastDStoreTime_ms;		 // sean
-    VectorN<Vector3f,BUFFER_SIZE> storedD_v;       //  sean vector part of quaternion Delta
-    float storedD_s[BUFFER_SIZE];                 // sean  scalar part of quaternion Delta
-    uint32_t DTimeStamp[BUFFER_SIZE];    		  // sean
-    VectorN<Vector3f,BUFFER_SIZE> storedd_v;       //  sean buffer for delta corrsponding to velocity prediction
-    VectorN<Vector3f,BUFFER_SIZE> storedd_p;       //  sean buffer for delta corrsponding to position prediction
-    VectorN<Vector3f,BUFFER_SIZE> storedd_p_m;       //  sean buffer for delta corrsponding to position prediction mixed-invariant
-    VectorN<Vector3f,BUFFER_SIZE> storedd_v_m;       //  sean buffer for delta corrsponding to velocity prediction mixed-invariant
-    uint32_t ctr_rst;  // reset predictor cntr
 
     AP_Int8 est_sel;
 
     uint32_t lastFixTime_ms1;
     uint32_t secondLastFixTime_ms1;
     Vector3f velNED1;
-
 
     uint32_t lastMagUpdate1;
     Vector3f magData1;
@@ -165,8 +151,6 @@ public:
     AP_Predictors &get_Predictor(void) {
         return test_Predictor;
     }
-
-    float init_reset;   //sean reset initial quaternions
 
     // This function is used to initialise the filter whilst moving, using the AHRS DCM solution
     // It should NOT be used to re-initialise after a timeout as DCM will also be corrupted
@@ -228,9 +212,6 @@ public:
     void getEulerAngles2(Vector3f &eulers) const;
 
     void getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
-
-// sean return v1
-//    void getv1(float &v1) const;
 
     // return the transformation matrix from XYZ (body) to NED axes
     void getRotationBodyToNED2(Matrix3f &mat) const;
@@ -467,7 +448,7 @@ private:
     uint16_t _msecBetaAvg;          // maximum number of msec between synthetic sideslip measurements
     float dtVelPos;                 // average of msec between position and velocity corrections
 
-    AP_Int8 pred_sel;
+    AP_Int8 pred_sel;               // sellects the predictor to be fed into the control instead on EKF estimates (pred_sel=0 choses the first predictor and pred_sel=1 chooses the second predictor).
 
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised
@@ -486,8 +467,8 @@ private:
     Matrix22 KH;                    // intermediate result used for covariance updates
     Matrix22 KHP;                   // intermediate result used for covariance updates
     Matrix22 P;                     // covariance matrix
-    VectorN<state_elements,BUFFER_SIZE> storedStates;       // state vectors stored for the last 50 time steps  // sean increase buffer length from 50 to BUFFER_SIZE
-    uint32_t statetimeStamp[BUFFER_SIZE];    // time stamp for each state vector stored  // sean increase buffer length from 50 to BUFFER_SIZE
+    VectorN<state_elements,BUFFER_SIZE> storedStates;       // state vectors stored for the last 50 time steps  // We should get rid of this variable later on since we do not use it anymore.
+    uint32_t statetimeStamp[BUFFER_SIZE];    // time stamp for each state vector stored  // We should get rid of this variable later on since we do not use it anymore.
     Vector3f correctedDelAng;       // delta angles about the xyz body axes corrected for errors (rad)
     Vector3f correctedDelVel12;     // delta velocities along the XYZ body axes for weighted average of IMU1 and IMU2 corrected for errors (m/s)
     Vector3f correctedDelVel1;      // delta velocities along the XYZ body axes for IMU1 corrected for errors (m/s)
@@ -586,39 +567,6 @@ private:
     float tasTestRatio;             // sum of squares of true airspeed innovation divided by fail threshold
     bool inhibitWindStates;         // true when wind states and covariances are to remain constant
     bool inhibitMagStates;          // true when magnetic field states and covariances are to remain constant
-
-    /////////////////////////// Sean: (12 - 15)/12/2014 -- Predictor ///////////////////////////////////////////////////////////
-
-//    Matrix3f D;
-//    Matrix3f D_T;
-//    Quaternion D_q;
-//    Quaternion D_q_k1;
-//    float n_D_q_k1;
-//    Quaternion q_hat;   //sean prediction of the current quaternion
-//    Quaternion q_hat_T_k1;
-//    Vector3f tilde_q;
-//    float n_tilde_q;
-//    Quaternion delta_q;
-//    Matrix3f R_hat_T;
-//    Matrix3f R_hat;
-//    Vector3f d_v;
-//    Vector3f v_hat; // prediction of current velocity
-//    Vector3f d_p;
-//   Vector3f p_hat; // prediction of current position
-//   Vector3f v_hat_m; // prediction of current velocity mixed-invariant
-//    Vector3f d_p_m;
- //   Vector3f p_hat_m; // prediction of current position mixed-invariant
-//    Vector3f d_v_m;  // mixed-invariant
-
-    Vector3f tilde_Vel;
-    Vector3f corrected_tilde_Vel1;
-    Vector3f corrected_tilde_Vel2;
-    Vector3f corrected_tilde_Vel12;
-
-    // uint32_t bestTimeDeltaMag;
-    // uint16_t bestStoreIndex;
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // Used by smoothing of state corrections
     float gpsIncrStateDelta[10];    // vector of corrections to attitude, velocity and position to be applied over the period between the current and next GPS measurement

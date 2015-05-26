@@ -1,3 +1,36 @@
+/*
+By: Alireza Khosravian and Sean O'Brien
+
+This library implements the attitude, velocity, and position predictors
+proposed in the following references.
+[A] A. Khosravian, J. Trumpf, R. Mahony, and T. Hamel,
+    “Velocity aided attitude estimation on SO(3) with sensor delay,”
+    in Proc. IEEE Conf. on Decision and Control, December 2014.
+[B] A. Khosravian, J. Trumpf, R. Mahony, and T. Hamel,
+    "State Estimation for Invariant Systems on Lie Groups with Delayed Output Measurements",
+    Automatica (under review since April 2015).
+
+The main use of the predictors is to compensate for time lags (time delays) of sensor measurements.
+This has been demostrated by combining the predictor with AP_NavEKF2 library.
+
+There is one attitude predictor, but two velocity predictors and two position predictors.
+The first pair of velocity and position predictor is based on the work presented in [A] and
+the second pair is based on [B].
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef AP_PREDICTORS_H
 #define AP_PREDICTORS_H
 
@@ -32,8 +65,6 @@ public:
     void getPosition2Prediction(Vector3f &pos) const;
     void getVelocityPrediction(Vector3f &vel) const;
     void getVelocity2Prediction(Vector3f &vel) const;
-    void getSwitchPrediction(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
-
 
 private:
     Quaternion q_hat;    // prediction of the current quaternion
@@ -84,7 +115,6 @@ private:
     uint32_t lastHgtStoreTime_ms;
     float storedHgt[BUFFER_SIZE];
     uint32_t HgtTimeStamp[BUFFER_SIZE];
-    uint32_t lastHealthyHgtTime_ms;  //time the barometer was last declared healthy
 
     // attitude model variables
     uint16_t storeIndexD;

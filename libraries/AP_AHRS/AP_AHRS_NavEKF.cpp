@@ -118,7 +118,7 @@ void AP_AHRS_NavEKF::_update_ekf1(void)
     if (ekf1.started) {
         EKF1.UpdateFilter();
         EKF1.getRotationBodyToNED(ekf1._dcm_matrix);
-        if (using_EKF() == AHRS_SELECTED_EKF1 || 
+        if (using_EKF() == AHRS_SELECTED_EKF1 ||
             using_EKF() == AHRS_SELECTED_EKF1_NO_FALLBACK) {
             ekf1._gyro_estimate += ekf1._gyro_bias;
 
@@ -162,7 +162,7 @@ void AP_AHRS_NavEKF::_update_ekf1(void)
 
             // calculate corrected gryo estimate for get_gyro()
             ekf1._gyro_estimate.zero();
-            uint8_t healthy_count = 0;    
+            uint8_t healthy_count = 0;
             for (uint8_t i=0; i<_ins.get_gyro_count(); i++) {
                 if (_ins.get_gyro_health(i) && healthy_count < 2) {
                     ekf1._gyro_estimate += _ins.get_gyro(i);
@@ -236,7 +236,7 @@ void AP_AHRS_NavEKF::_update_ekf2(void)
 
             // calculate corrected gryo estimate for get_gyro()
             ekf2._gyro_estimate.zero();
-            uint8_t healthy_count = 0;    
+            uint8_t healthy_count = 0;
             for (uint8_t i=0; i<_ins.get_gyro_count(); i++) {
                 if (_ins.get_gyro_health(i)) {
                     ekf2._gyro_estimate += _ins.get_gyro(i);
@@ -287,10 +287,10 @@ void AP_AHRS_NavEKF::reset(bool recover_eulers)
 {
     AP_AHRS_DCM::reset(recover_eulers);
     if (ekf1.started) {
-        ekf1.started = EKF1.InitialiseFilterBootstrap();        
+        ekf1.started = EKF1.InitialiseFilterBootstrap();
     }
     if (ekf2.started) {
-        ekf2.started = EKF2.InitialiseFilterBootstrap();        
+        ekf2.started = EKF2.InitialiseFilterBootstrap();
     }
 }
 
@@ -299,10 +299,10 @@ void AP_AHRS_NavEKF::reset_attitude(const float &_roll, const float &_pitch, con
 {
     AP_AHRS_DCM::reset_attitude(_roll, _pitch, _yaw);
     if (ekf1.started) {
-        ekf1.started = EKF1.InitialiseFilterBootstrap();        
+        ekf1.started = EKF1.InitialiseFilterBootstrap();
     }
     if (ekf2.started) {
-        ekf2.started = EKF2.InitialiseFilterBootstrap();        
+        ekf2.started = EKF2.InitialiseFilterBootstrap();
     }
 }
 
@@ -401,7 +401,7 @@ bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers, uint8_t instance)
             return true;
         }
         eulers = _dcm_attitude;
-        return true;        
+        return true;
     }
     switch (using_EKF()) {
     case AHRS_SELECTED_EKF1:
@@ -427,18 +427,6 @@ bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers, uint8_t instance)
     return false;
 }
 
-/*
-// Sean get v ahrs
-void AP_AHRS_NavEKF::get_v(float &v1)
-{
-        if (ekf2.started) {
-            EKF2.getv1(v1);
-	}
-	else {
-        v1= 0;
-         }
-}
-*/
 
 // return secondary position solution if available
 bool AP_AHRS_NavEKF::get_secondary_position(struct Location &loc, uint8_t instance)
@@ -450,7 +438,7 @@ bool AP_AHRS_NavEKF::get_secondary_position(struct Location &loc, uint8_t instan
             return true;
         }
         AP_AHRS_DCM::get_position(loc);
-        return true;        
+        return true;
     }
     switch (using_EKF()) {
     case AHRS_SELECTED_EKF1:
@@ -503,7 +491,7 @@ void AP_AHRS_NavEKF::set_home(const Location &loc)
 }
 
 // return true if inertial navigation is active
-bool AP_AHRS_NavEKF::have_inertial_nav(void) const 
+bool AP_AHRS_NavEKF::have_inertial_nav(void) const
 {
     return using_EKF() != AHRS_SELECTED_DCM;
 }
@@ -555,8 +543,8 @@ AP_AHRS_NavEKF::AHRS_selected AP_AHRS_NavEKF::using_EKF(void) const
         // If EKF is started we switch away if it reports unhealthy. This could be due to bad
         // sensor data. If EKF reversion is inhibited, we only switch across if the EKF encounters
         // an internal processing error, but not for bad sensor data.
-        bool ret = (ekf1.started && 
-                    ((selected == AHRS_SELECTED_EKF1 && EKF1.healthy()) || 
+        bool ret = (ekf1.started &&
+                    ((selected == AHRS_SELECTED_EKF1 && EKF1.healthy()) ||
                      (selected == AHRS_SELECTED_EKF1_NO_FALLBACK && ekf_faults == 0)));
         if (!ret) {
             selected = AHRS_SELECTED_DCM;
@@ -584,7 +572,7 @@ AP_AHRS_NavEKF::AHRS_selected AP_AHRS_NavEKF::using_EKF(void) const
             return AHRS_SELECTED_DCM;
         }
         break;
-        
+
     case AHRS_SELECTED_DCM:
     default:
         break;
@@ -617,7 +605,7 @@ bool AP_AHRS_NavEKF::healthy(void) const
     default:
     break;
     }
-    return AP_AHRS_DCM::healthy();    
+    return AP_AHRS_DCM::healthy();
 }
 
 void AP_AHRS_NavEKF::set_ekf_use(bool setting)
@@ -631,9 +619,9 @@ void AP_AHRS_NavEKF::set_ekf_use(bool setting)
 bool AP_AHRS_NavEKF::initialised(void) const
 {
     // initialisation complete 10sec after ekf has started
-    return (ekf1.started && 
+    return (ekf1.started &&
             (hal.scheduler->millis() - ekf1.start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS) &&
-            ekf2.started && 
+            ekf2.started &&
             (hal.scheduler->millis() - ekf2.start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
 }
 

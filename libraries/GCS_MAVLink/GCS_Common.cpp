@@ -244,7 +244,6 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
         float v2;
         float v3;
         float v4;
-        //ekf2.get_Predictor().getSwitchPrediction(v1,v2,v3,v4,ekf2.pred_sel);
         ekf2.getSwitchEstimate(v1,v2,v3,v4,ekf2.est_sel);
         mavlink_msg_ahrs3_send(chan,
                                euler.x,
@@ -318,7 +317,7 @@ void GCS_MAVLINK::handle_mission_request(AP_Mission &mission, mavlink_message_t 
     ret_packet.seq = packet.seq;
     ret_packet.command = cmd.id;
 
-    _mav_finalize_message_chan_send(chan, 
+    _mav_finalize_message_chan_send(chan,
                                     MAVLINK_MSG_ID_MISSION_ITEM,
                                     (const char *)&ret_packet,
                                     MAVLINK_MSG_ID_MISSION_ITEM_LEN,
@@ -559,7 +558,7 @@ void GCS_MAVLINK::handle_param_request_read(mavlink_message_t *msg)
             return;
         }
     }
-    
+
     float value = vp->cast_to_float(p_type);
     mavlink_msg_param_value_send_buf(
         msg,
@@ -613,8 +612,8 @@ void GCS_MAVLINK::handle_param_set(mavlink_message_t *msg, DataFlash_Class *Data
 void
 GCS_MAVLINK::send_text(gcs_severity severity, const char *str)
 {
-    if (severity != SEVERITY_LOW && 
-        comm_get_txspace(chan) >= 
+    if (severity != SEVERITY_LOW &&
+        comm_get_txspace(chan) >=
         MAVLINK_NUM_NON_PAYLOAD_BYTES+MAVLINK_MSG_ID_STATUSTEXT_LEN) {
         // send immediately
         mavlink_msg_statustext_send(chan, severity, str);
@@ -698,7 +697,7 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
         goto mission_ack;
     }
 
-    if (packet.current == 2) {                                               
+    if (packet.current == 2) {
         // current = 2 is a flag to tell us this is a "guided mode"
         // waypoint and not for the mission
         handle_guided_request(cmd);
@@ -729,7 +728,7 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
         result = MAV_MISSION_INVALID_SEQUENCE;
         goto mission_ack;
     }
-    
+
     // if command index is within the existing list, replace the command
     if (packet.seq < mission.num_commands()) {
         if (mission.replace_cmd(packet.seq,cmd)) {
@@ -751,11 +750,11 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
         result = MAV_MISSION_ERROR;
         goto mission_ack;
     }
-    
+
     // update waypoint receiving state machine
     waypoint_timelast_receive = hal.scheduler->millis();
     waypoint_request_i++;
-    
+
     if (waypoint_request_i >= waypoint_request_last) {
         mavlink_msg_mission_ack_send_buf(
             msg,
@@ -763,7 +762,7 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
             msg->sysid,
             msg->compid,
             MAV_MISSION_ACCEPTED);
-        
+
         send_text_P(SEVERITY_LOW,PSTR("flight plan received"));
         waypoint_receiving = false;
         mission_is_complete = true;
@@ -772,7 +771,7 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
     } else {
         waypoint_timelast_request = hal.scheduler->millis();
         // if we have enough space, then send the next WP immediately
-        if (comm_get_txspace(chan) >= 
+        if (comm_get_txspace(chan) >=
             MAVLINK_NUM_NON_PAYLOAD_BYTES+MAVLINK_MSG_ID_MISSION_ITEM_LEN) {
             queued_waypoint_send();
         } else {
@@ -793,7 +792,7 @@ mission_ack:
     return mission_is_complete;
 }
 
-void 
+void
 GCS_MAVLINK::handle_gps_inject(const mavlink_message_t *msg, AP_GPS &gps)
 {
     mavlink_gps_inject_data_t packet;
@@ -870,7 +869,7 @@ GCS_MAVLINK::update(run_cli_fn run_cli)
         if (run_cli) {
             /* allow CLI to be started by hitting enter 3 times, if no
              *  heartbeat packets have been received */
-            if ((mavlink_active==0) && (hal.scheduler->millis() - _cli_timeout) < 20000 && 
+            if ((mavlink_active==0) && (hal.scheduler->millis() - _cli_timeout) < 20000 &&
                 comm_is_idle(chan)) {
                 if (c == '\n' || c == '\r') {
                     crlf_count++;
@@ -927,7 +926,7 @@ GCS_MAVLINK::update(run_cli_fn run_cli)
  */
 bool GCS_MAVLINK::send_gps_raw(AP_GPS &gps)
 {
-    if (comm_get_txspace(chan) >= 
+    if (comm_get_txspace(chan) >=
         MAVLINK_MSG_ID_GPS_RAW_INT_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) {
         gps.send_mavlink_gps_raw(chan);
     } else {
@@ -953,7 +952,7 @@ bool GCS_MAVLINK::send_gps_raw(AP_GPS &gps)
 
 #if GPS_RTK_AVAILABLE
         if (gps.highest_supported_status(1) > AP_GPS::GPS_OK_FIX_3D) {
-            if (comm_get_txspace(chan) >= 
+            if (comm_get_txspace(chan) >=
                 MAVLINK_NUM_NON_PAYLOAD_BYTES+MAVLINK_MSG_ID_GPS2_RTK_LEN) {
                 gps.send_mavlink_gps2_rtk(chan);
             }
@@ -1005,7 +1004,7 @@ void GCS_MAVLINK::send_radio_in(uint8_t receiver_rssi)
         values[7],
         receiver_rssi);
 
-    if (hal.rcin->num_channels() > 8 && 
+    if (hal.rcin->num_channels() > 8 &&
         comm_get_txspace(chan) >= MAVLINK_MSG_ID_RC_CHANNELS_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) {
         mavlink_msg_rc_channels_send(
             chan,
@@ -1029,7 +1028,7 @@ void GCS_MAVLINK::send_radio_in(uint8_t receiver_rssi)
             hal.rcin->read(CH_16),
             hal.rcin->read(CH_17),
             hal.rcin->read(CH_18),
-            receiver_rssi);        
+            receiver_rssi);
     }
 }
 
@@ -1080,7 +1079,7 @@ void GCS_MAVLINK::send_raw_imu(const AP_InertialSensor &ins, const Compass &comp
         gyro2.z * 1000.0f,
         mag.x,
         mag.y,
-        mag.z);        
+        mag.z);
 #endif
 #if INS_MAX_INSTANCES > 2
     if (ins.get_gyro_count() <= 2 &&
@@ -1106,7 +1105,7 @@ void GCS_MAVLINK::send_raw_imu(const AP_InertialSensor &ins, const Compass &comp
         gyro3.z * 1000.0f,
         mag.x,
         mag.y,
-        mag.z);        
+        mag.z);
 #endif
 }
 
@@ -1128,7 +1127,7 @@ void GCS_MAVLINK::send_scaled_pressure(AP_Baro &barometer)
             now,
             pressure*0.01f, // hectopascal
             (pressure - barometer.get_ground_pressure(1))*0.01f, // hectopascal
-            barometer.get_temperature(1)*100); // 0.01 degrees C        
+            barometer.get_temperature(1)*100); // 0.01 degrees C
     }
 #endif
 }
@@ -1285,7 +1284,7 @@ void GCS_MAVLINK::send_autopilot_version(void) const
     uint16_t vendor_id = 0;
     uint16_t product_id = 0;
     uint64_t uid = 0;
-    
+
 #if defined(GIT_VERSION)
     strncpy((char *)flight_custom_version, GIT_VERSION, 8);
 #else
@@ -1297,13 +1296,13 @@ void GCS_MAVLINK::send_autopilot_version(void) const
 #else
     memset(middleware_custom_version,0,8);
 #endif
-    
+
 #if defined(NUTTX_GIT_VERSION)
     strncpy((char *)os_custom_version, NUTTX_GIT_VERSION, 8);
 #else
     memset(os_custom_version,0,8);
 #endif
-    
+
     mavlink_msg_autopilot_version_send(
         chan,
         capabilities,

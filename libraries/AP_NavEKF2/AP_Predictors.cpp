@@ -74,6 +74,8 @@ void AP_Predictors::CascadedPredictor(Vector3f tilde_q, Vector3f corrected_tilde
 
 }
 
+// The functions AttitudeModel and AttitudePredictor implement the attitude predictor proposed in [A] and [B].
+
 // The fuction AttitudeModel uses attitude kinematics and updates the variable D_q_k1 and stores
 // the updated one into the buffer storedD.
 // The valiable D_q_k1 is an internal state of th predictor and corresponds to the variable \Delta in [A] and [B].
@@ -145,8 +147,9 @@ void AP_Predictors::AttitudeModel(Vector3f tilde_q)
 }
 
 
-// This fuction uses the buffer storedD and the delayed estimate of the attitude (stored in quat)
-// and computes the current attitude (i.e. the variable q_hat). This function implements the static equasions (7) of [A] (which is similar to the equasion (39) of [B]).
+// The fuction AttitudePredictor uses the buffer storedD and the delayed estimate of the attitude (stored in quat)
+// and computes the current attitude (i.e. the variable q_hat). This function implements the static
+// equasions (7) of [A] (which is similar to the equasion (39) of [B]).
 void AP_Predictors::AttitudePredictor(Quaternion quat)
 {
     Quaternion q_tmp;
@@ -176,6 +179,7 @@ void AP_Predictors::AttitudePredictor(Quaternion quat)
     q_hat=q_tmp;
 }
 
+// The functions VelocityModel and VelocityPredictor implement the first velocity predictor (proposed in [A]).
 
 // The fuction VelocityModel uses velocity kinematics and updates the variable d_v and stores
 // the updated one into the buffer storedd_v.
@@ -199,15 +203,26 @@ void AP_Predictors::VelocityModel(Vector3f corrected_tilde_Vel12, ftype dtIMU)
     storeDataVector(d_v, storedd_v, lastd_vStoreTime_ms, d_vTimeStamp, storeIndexd_v);
 }
 
+// The fuction VelocityPredictor uses the buffer storedd_v and the delayed estimate of the velocity (stored in velocity)
+// and computes the current velocity vector (i.e. the variable v_hat). This function implements the static
+// equasions (9) of [A].
 void AP_Predictors::VelocityPredictor(Vector3f velocity)
 {
 // picking up the delayed d_v
     d_v_Delay=storedd_v[bestStoreIndexd_v];
 
-// v_hat
+// computing the prediction of velocity v_hat
     v_hat = velocity + d_v- d_v_Delay;
 }
 
+
+// The functions PositionModel and PositionPredictor implement the first position predictor which
+// relys on the first velocity predictor to predict the position.
+
+// The fuction PositionModel uses position kinematics and updates the variable d_p and stores
+// the updated one into the buffer storedd_p.
+// The valiable d_p is an internal state of th predictor. Conseptualy, this function plays
+// the same role for position prediction as VelocityModel does for velocity prediction.
 void AP_Predictors::PositionModel(ftype dtIMU)
 {
 // position prediction
@@ -216,6 +231,9 @@ void AP_Predictors::PositionModel(ftype dtIMU)
     storeDataVector(d_p, storedd_p, lastd_pStoreTime_ms, d_pTimeStamp, storeIndexd_p);
 }
 
+// The fuction PositionPredictor uses the buffer storedd_p and the delayed estimate of the position (stored in position)
+// and computes the current position vector (i.e. the variable p_hat). This function plays the same role for position
+// prediction as VelocityPredictor does for velocity prediction.
 void AP_Predictors::PositionPredictor(Vector3f position)
 {
 // picking up the delayed d_p
@@ -224,34 +242,33 @@ void AP_Predictors::PositionPredictor(Vector3f position)
     p_hat = position + d_p- d_p_Delay;
 }
 
-void AP_Predictors::PositionModel2(ftype dtIMU)
-{
-// position prediction
-    d_p_m+= v_hat_m*dtIMU;
-// buffering d_p
-    storeDataVector(d_p_m, storedd_p_m, lastd_p_mStoreTime_ms, d_p_mTimeStamp, storeIndexd_p_m);
-}
+// The functions VelocityModel2 and VelocityPredictor2 implement the second velocity predictor (proposed in [B]).
+// The second velocity predictor is independent of the first velocity predictor and is an alternative to that.
+// In our initial simulations, the second velocity predictor performed better than the first predictor, but it has not
+// yet fully confirmed.
 
-void AP_Predictors::PositionPredictor2(Vector3f position)
-{
-// picking up the delayed d_p
-    d_p_Delay=storedd_p_m[bestStoreIndexd_p_m];
-// p_hat
-    p_hat_m = position + d_p_m- d_p_Delay;
-}
-
+// The fuction VelocityModel1 uses velocity kinematics and updates the variable d_v_m and stores
+// the updated one into the buffer storedd_v_m.
+// The valiable d_v_m is an internal state of the predictor and corresponds to the variable \delta in [B].
+// This function implements the dynamics (38) of [B]. Due to the nature of the second predictor dynamics,
+// the internal state d_v_m needs to be reset to zero every now and the to keep its trajectory bounded. This resetting
+// is performed in this function.
 void AP_Predictors::VelocityModel2(Vector3f corrected_tilde_Vel12)
 {
-// Mixed-invariant
+// Mixed-invariant predictor
     Matrix3f Tbn_temp;
     D_q_k1.rotation_matrix(Tbn_temp);
 
+// second velocity predictor dynamics
     d_v_m= d_v_m+Tbn_temp*corrected_tilde_Vel12 ;
 
 // buffering d_v_m
     storeDataVector(d_v_m, storedd_v_m, lastd_v_mStoreTime_ms, d_v_mTimeStamp, storeIndexd_v_m);
+
+// resetting the internal state d_v_m to zero every  20*2*BUFFER_SIZE milliseconds
+// in order to keep its trajectory bounded. This resetting is done according to [B].
     ctr_rst=ctr_rst+1;
-    if (ctr_rst== 2*BUFFER_SIZE) {   // reset the buffer every 2*BUFFER_SIZE*20 (ms) to keep the trajectry of storedd_v_m bounded
+    if (ctr_rst== 2*BUFFER_SIZE) {
         ctr_rst=0;
         for (uint16_t i=0; i<=(BUFFER_SIZE-1); i++)
         {
@@ -263,13 +280,16 @@ void AP_Predictors::VelocityModel2(Vector3f corrected_tilde_Vel12)
     }
 }
 
+// The fuction VelocityPredictor2 uses the buffer storedd_v_m and the delayed estimate of the velocity (stored in velocity)
+// and the delayed estimate of quaternion (stored in quat) and computes the current velocity vector (i.e. the variable v_hat_m).
+// This function implements the static equasion (40) of [B].
 void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_Int16 _msecTauDelay)
 {
-// picking up the delayed d_v
+// picking up the delayed d_v_m
     Vector3f d_v_m_Delay=storedd_v_m[bestStoreIndexd_v_m];
 
     Quaternion q_tmp;
-// D_q_delay^{-1}
+// computing the inverse quaternion D_q_delay^{-1}
     q_tmp[0]= D_Delay[0];
     q_tmp[1]= -D_Delay[1];
     q_tmp[2]= -D_Delay[2];
@@ -277,19 +297,49 @@ void AP_Predictors::VelocityPredictor2(Quaternion quat, Vector3f velocity, AP_In
 
     Quaternion q_tmp_m;
 
-// q_hat_tau \times D_q_delay^{-1}
+// computing the quaternion multiplication q_hat_tau \times D_q_delay^{-1}
     q_tmp_m[0] = quat[0]*q_tmp[0] - quat[1]*q_tmp[1] - quat[2]*q_tmp[2] - quat[3]*q_tmp[3];
     q_tmp_m[1] = quat[0]*q_tmp[1] + quat[1]*q_tmp[0] + quat[2]*q_tmp[3] - quat[3]*q_tmp[2];
     q_tmp_m[2] = quat[0]*q_tmp[2] + quat[2]*q_tmp[0] + quat[3]*q_tmp[1] - quat[1]*q_tmp[3];
     q_tmp_m[3] = quat[0]*q_tmp[3] + quat[3]*q_tmp[0] + quat[1]*q_tmp[2] - quat[2]*q_tmp[1];
 
+// Converting quaternion to rotation matrix.
     Matrix3f Tbn_temp;
     q_tmp_m.rotation_matrix(Tbn_temp);
 
-// v_hat_m mixed-invariant
+// Computing the second velocity prediction v_hat_m.
     v_hat_m = velocity + gravityNED*(0.001f*constrain_int16(_msecTauDelay, 0, MAX_MSDELAY))+Tbn_temp*(d_v_m- d_v_m_Delay);
 }
 
+// The functions PositionModel2 and PositionPredictor2 implement the second position predictor which
+// relys on the second velocity predictor to predict the position. The second position predictor is independent of
+// the first position predictor and is an alternative to that.
+
+// The fuction PositionModel2 uses position kinematics and updates the variable d_p_m and stores
+// the updated one into the buffer storedd_p_m.
+// The valiable d_p_m is an internal state of the predictor. Conseptualy, this function plays
+// the same role for position prediction as VelocityModel does for velocity prediction.
+void AP_Predictors::PositionModel2(ftype dtIMU)
+{
+// position predictor dynamics
+    d_p_m+= v_hat_m*dtIMU;
+// buffering d_p_m
+    storeDataVector(d_p_m, storedd_p_m, lastd_p_mStoreTime_ms, d_p_mTimeStamp, storeIndexd_p_m);
+}
+
+// The fuction PositionPredictor2 uses the buffer storedd_p_m and the delayed estimate of the position (stored in position)
+// and computes the current position vector (i.e. the variable p_hat_m). This function plays the same role for position
+// prediction as VelocityPredictor does for velocity prediction.
+void AP_Predictors::PositionPredictor2(Vector3f position)
+{
+// Picking up the delayed d_p_m
+    d_p_Delay=storedd_p_m[bestStoreIndexd_p_m];
+// Computing the prediction of position p_hat_m
+    p_hat_m = position + d_p_m- d_p_Delay;
+}
+
+// The function storeDataVector is used to store a Vector3f into its corresponding buffer and also to store its
+// time stamp into the corresponding time stamp buffer.
 void AP_Predictors::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex)
 {
     if (imuSampleTimePred_ms - lastStoreTime >= 10) {
@@ -303,6 +353,8 @@ void AP_Predictors::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE
     }
 }
 
+// The function storeDataQuaternion is used to store a Quaternion into its corresponding buffer and also to store its
+// time stamp into the corresponding time stamp buffer.
 void AP_Predictors::storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex)
 {
     if (imuSampleTimePred_ms - lastStoreTime >= 10) {
@@ -316,6 +368,9 @@ void AP_Predictors::storeDataQuaternion(Quaternion &data, VectorN<Quaternion,BUF
     }
 }
 
+// The function BestIndex searchs the time stamp buffer and find the index that whose time stamp is closest to
+// _msecTauDelay milliseconds before the correcnt time.
+// We should later on replace this function with a FIFO buffer to decrease the computation load.
 void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTauDelay)
 {
     uint32_t time_delta;
@@ -333,27 +388,32 @@ void AP_Predictors::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex
     }
 }
 
+// The function getAttitudePrediction returns the current prediction of attitude.
 void AP_Predictors::getAttitudePrediction(Quaternion &att) const
 {
     att = q_hat;
 }
 
-void AP_Predictors::getPositionPrediction(Vector3f &pos) const
-{
-    pos = p_hat;
-}
-
-void AP_Predictors::getPosition2Prediction(Vector3f &pos) const
-{
-    pos = p_hat_m;
-}
-
+// The function getVelocityPrediction returns the current prediction of velocity from the first predictor.
 void AP_Predictors::getVelocityPrediction(Vector3f &vel) const
 {
     vel = v_hat;
 }
 
+// The function getPositionPrediction returns the current prediction of position from the first predictor.
+void AP_Predictors::getPositionPrediction(Vector3f &pos) const
+{
+    pos = p_hat;
+}
+
+// The function getVelocity2Prediction returns the current prediction of velocity from the second predictor.
 void AP_Predictors::getVelocity2Prediction(Vector3f &vel) const
 {
     vel = v_hat_m;
+}
+
+// The function getPosition2Prediction returns the current prediction of position from the second predictor.
+void AP_Predictors::getPosition2Prediction(Vector3f &pos) const
+{
+    pos = p_hat_m;
 }

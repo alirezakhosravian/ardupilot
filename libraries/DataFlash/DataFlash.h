@@ -382,7 +382,7 @@ struct PACKED log_EKF5 {
 
 struct PACKED log_ANU1 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     int16_t roll;
     int16_t pitch;
     uint16_t yaw;
@@ -399,7 +399,7 @@ struct PACKED log_ANU1 {
 
 struct PACKED log_ANU2 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     int8_t Ratio;
     int8_t AZ1bias;
     int8_t AZ2bias;
@@ -415,7 +415,7 @@ struct PACKED log_ANU2 {
 
 struct PACKED log_ANU3 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     int16_t innovVN;
     int16_t innovVE;
     int16_t innovVD;
@@ -430,7 +430,7 @@ struct PACKED log_ANU3 {
 
 struct PACKED log_ANU4 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     int16_t sqrtvarV;
     int16_t sqrtvarP;
     int16_t sqrtvarH;
@@ -446,7 +446,7 @@ struct PACKED log_ANU4 {
 
 struct PACKED log_ANU5 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     float a1;
     float a2;
     float a3;
@@ -460,7 +460,7 @@ struct PACKED log_ANU5 {
 
 struct PACKED log_ANU6 {
     LOG_PACKET_HEADER;
-    uint32_t time_ms;
+    uint64_t time_us;
     float v2x;
     float v2y;
     float v2z;

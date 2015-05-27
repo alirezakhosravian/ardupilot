@@ -1107,7 +1107,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     ahrs.get_NavEKF2().getGyroBias(gyroBias);
     struct log_ANU1 pkt = {
         LOG_PACKET_HEADER_INIT(LOG_ANU1_MSG),
-        time_ms : hal.scheduler->millis(),
+        time_ms : hal.scheduler->micros64(),
         roll    : (int16_t)(100*degrees(euler.x)), // roll angle (centi-deg, displayed as deg due to format string)
         pitch   : (int16_t)(100*degrees(euler.y)), // pitch angle (centi-deg, displayed as deg due to format string)
         yaw     : (uint16_t)wrap_360_cd(100*degrees(euler.z)), // yaw angle (centi-deg, displayed as deg due to format string)
@@ -1137,7 +1137,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     ahrs.get_NavEKF2().getMagXYZ(magXYZ);
     struct log_ANU2 pkt2 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU2_MSG),
-        time_ms : hal.scheduler->millis(),
+        time_ms : hal.scheduler->micros64(),
         Ratio   : (int8_t)(100*ratio),
         AZ1bias : (int8_t)(100*az1bias),
         AZ2bias : (int8_t)(100*az2bias),
@@ -1160,7 +1160,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     ahrs.get_NavEKF2().getInnovations(velInnov, posInnov, magInnov, tasInnov);
     struct log_ANU3 pkt3 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU3_MSG),
-        time_ms : hal.scheduler->millis(),
+        time_ms : hal.scheduler->micros64(),
         innovVN : (int16_t)(100*velInnov.x),
         innovVE : (int16_t)(100*velInnov.y),
         innovVD : (int16_t)(100*velInnov.z),
@@ -1186,7 +1186,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     ahrs.get_NavEKF2().getFilterFaults(faultStatus);
     struct log_ANU4 pkt4 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU4_MSG),
-        time_ms : hal.scheduler->millis(),
+        time_ms : hal.scheduler->micros64(),
         sqrtvarV : (int16_t)(100*velVar),
         sqrtvarP : (int16_t)(100*posVar),
         sqrtvarH : (int16_t)(100*hgtVar),
@@ -1219,7 +1219,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     ekf2.get_Predictor().getVelocity2Prediction(velp2);
     struct log_ANU5 pkt5 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
-        time_ms  : hal.scheduler->millis(),
+        time_ms  : hal.scheduler->micros64(),
         a1     : (float)(eulp.x),
         a2     : (float)(eulp.y),
         a3     : (float)(eulp.z),
@@ -1232,7 +1232,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     };
 //    struct log_ANU5 pkt5 = {
 //        LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
-//        time_ms  : hal.scheduler->millis(),
+//        time_ms  : hal.scheduler->micros64(),
 //        a1     : (float)(attp.q1),
 //        a2     : (float)(attp.q2),
 //        a3     : (float)(attp.q3),
@@ -1249,7 +1249,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
 	// Write predictor mixed-invariant packet
     struct log_ANU6 pkt6 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU6_MSG),
-        time_ms  : hal.scheduler->millis(),
+        time_ms  : hal.scheduler->micros64(),
         v2x    : (float)(velp2.x), // velocity North (m/s)
         v2y    : (float)(velp2.y), // velocity East (m/s)
         v2z    : (float)(velp2.z), // velocity Down (m/s)

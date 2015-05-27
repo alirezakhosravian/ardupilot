@@ -561,10 +561,10 @@ AP_AHRS_NavEKF::AHRS_selected AP_AHRS_NavEKF::using_EKF(void) const
                 !filt_state.flags.vert_vel ||
                 !filt_state.flags.horiz_pos_abs ||
                 !filt_state.flags.vert_pos) {
-                return false;
+                return AHRS_SELECTED_DCM;
             }
         }
-        return ret;
+        return selected;
     }
 
     case AHRS_SELECTED_EKF2:

@@ -3434,7 +3434,6 @@ void NavEKF2::readMagData()
 //    if (use_compass() && ((_ahrs->get_compass()->last_update_usec()/1000) != lastMagUpdate1)){ //the function last_update_usec() has bugs!! it should return new values only every 100 (ms)
      if (use_compass() && (magData1 != (_ahrs->get_compass()->get_field() * 0.001f))){  // this line replaced the above one since there is a bug in last_update_usec()
         // store time of last measurement update
-        uint32_t temp_tst = lastMagUpdate1;
         lastMagUpdate1 = _ahrs->get_compass()->last_update_usec()/1000;
 
         // Read compass data
@@ -3447,7 +3446,6 @@ void NavEKF2::readMagData()
     uint16_t bestStoreIndex;
 
     BestIndex(bestTimeDelta, bestStoreIndex, MagTimeStamp, _msecEkfDelay, _msecMagDelay);
-        uint32_t tmp_test=lastMagUpdate;
         if ((lastMagUpdate != MagTimeStamp[bestStoreIndex]) && bestTimeDelta < MAX_MSERR){
             lastMagUpdate = MagTimeStamp[bestStoreIndex];
             magData = storedMag[bestStoreIndex];
@@ -3510,16 +3508,16 @@ void NavEKF2::storeDataFloat(float &dataf, float (&bufferf)[BUFFER_SIZE], uint32
     }
 }
 
-void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime)
+void NavEKF2::storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &store_index, uint32_t &currentTime)
 {
     if (currentTime - lastStoreTime >= 10) {
         lastStoreTime = currentTime;
-        if (storeIndex > (BUFFER_SIZE-1)) {
-            storeIndex = 0;
+        if (store_index > (BUFFER_SIZE-1)) {
+            store_index = 0;
         }
-        buffer[storeIndex]=data;
-        timeStamp[storeIndex] = lastStoreTime;
-        storeIndex = storeIndex + 1;
+        buffer[store_index]=data;
+        timeStamp[store_index] = lastStoreTime;
+        store_index = store_index + 1;
     }
 }
 
@@ -3535,7 +3533,7 @@ void NavEKF2::BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint
     for (int i=0; i<=(BUFFER_SIZE-1); i++)
     {
         time_delta = imuSampleTime_ms - timeStamp[i] - tmpvar1+tmpvar2;
-        if ((time_delta >=0) && (time_delta < closestTime))
+        if ((time_delta >=0) && (time_delta < (int32_t)closestTime))
         {
             closestStoreIndex = i;
             closestTime = time_delta;

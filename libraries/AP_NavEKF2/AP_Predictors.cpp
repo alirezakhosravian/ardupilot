@@ -417,3 +417,18 @@ void AP_Predictors::getPosition2Prediction(Vector3f &pos) const
 {
     pos = p_hat_m;
 }
+
+void AP_Predictors::getDq(Quaternion &Dq) const
+{
+    Dq = D_q_k1;
+}
+
+void AP_Predictors::getdv(Vector3f &dv) const
+{
+    dv = d_v;
+}
+
+void AP_Predictors::getdv2(Vector3f &dv2) const
+{
+    dv2 = d_v_m;
+}

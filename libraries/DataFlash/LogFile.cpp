@@ -1207,14 +1207,18 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     Vector3f posp1;
     Vector3f velp2;
     Vector3f posp2;
+    Vector3f velp3;
+    Vector3f posp3;
     ekf2.getEulerAngles2(eulp);
     ekf2.getPosNED2(posp1);
     ekf2.getVelNED2(velp1);
     //ekf2.get_Predictor().getAttitudePrediction(attp);
     //ekf2.get_Predictor().getPositionPrediction(posp1);
     ekf2.get_Predictor().getPosition2Prediction(posp2);
+    ekf2.get_Predictor().getPositionPrediction(posp3);
     //ekf2.get_Predictor().getVelocityPrediction(velp1);
     ekf2.get_Predictor().getVelocity2Prediction(velp2);
+    ekf2.get_Predictor().getVelocityPrediction(velp3);
     struct log_ANU5 pkt5 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
         time_us  : hal.scheduler->micros64(),
@@ -1254,8 +1258,36 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         p2x    : (float)(posp2.x), // metres North
         p2y    : (float)(posp2.y), // metres East
         p2z    : (float)(posp2.z), // metres Down
+        v3x    : (float)(velp3.x), // velocity North (m/s)
+        v3y    : (float)(velp3.y), // velocity East (m/s)
+        v3z    : (float)(velp3.z), // velocity Down (m/s)
+        p3x    : (float)(posp3.x), // metres North
+        p3y    : (float)(posp3.y), // metres East
+        p3z    : (float)(posp3.z), // metres Down
     };
     WriteBlock(&pkt6, sizeof(pkt6));
+
+        Quaternion tmpq;
+        Vector3f tmpd;
+        Vector3f tmpd2;
+        ekf2.get_Predictor().getDq(tmpq);
+        ekf2.get_Predictor().getdv(tmpd);
+        ekf2.get_Predictor().getdv2(tmpd2);
+        struct log_ANU7 pkt7 = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU7_MSG),
+        time_us  : hal.scheduler->micros64(),
+        Dq0    : (float)(tmpq[0]), // velocity North (m/s)
+        Dq1    : (float)(tmpq[1]), // velocity East (m/s)
+        Dq2    : (float)(tmpq[2]), // velocity Down (m/s)
+        Dq3    : (float)(tmpq[3]), // metres North
+        d2x    : (float)(tmpd2.x), // metres East
+        d2y    : (float)(tmpd2.y), // metres Down
+        d2z    : (float)(tmpd2.z), // velocity North (m/s)
+        d3x    : (float)(tmpd.x), // velocity East (m/s)
+        d3y    : (float)(tmpd.y), // velocity Down (m/s)
+        d3z    : (float)(tmpd.z), // metres North
+    };
+    WriteBlock(&pkt7, sizeof(pkt7));
 }
 
 #endif

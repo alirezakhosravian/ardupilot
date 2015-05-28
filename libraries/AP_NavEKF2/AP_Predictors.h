@@ -65,6 +65,9 @@ public:
     void getPosition2Prediction(Vector3f &pos) const;
     void getVelocityPrediction(Vector3f &vel) const;
     void getVelocity2Prediction(Vector3f &vel) const;
+    void getDq(Quaternion &Dq) const;
+    void getdv(Vector3f &dv) const;
+    void getdv2(Vector3f &dv2) const;
 
 private:
     Quaternion q_hat;    // prediction of the current quaternion

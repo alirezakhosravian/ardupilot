@@ -55,7 +55,7 @@ public:
     virtual uint16_t get_num_logs(void) = 0;
 #ifndef DATAFLASH_NO_CLI
     virtual void LogReadProcess(uint16_t log_num,
-                                uint16_t start_page, uint16_t end_page, 
+                                uint16_t start_page, uint16_t end_page,
                                 print_mode_fn printMode,
                                 AP_HAL::BetterStream *port) = 0;
     virtual void DumpPageInfo(AP_HAL::BetterStream *port) = 0;
@@ -118,12 +118,12 @@ protected:
     /*
     read and print a log entry using the format strings from the given structure
     */
-    void _print_log_entry(uint8_t msg_type, 
+    void _print_log_entry(uint8_t msg_type,
                           print_mode_fn print_mode,
                           AP_HAL::BetterStream *port);
-    
+
     void Log_Fill_Format(const struct LogStructure *structure, struct log_Format &pkt);
-    void Log_Write_Parameter(const AP_Param *ap, const AP_Param::ParamToken &token, 
+    void Log_Write_Parameter(const AP_Param *ap, const AP_Param::ParamToken &token,
                              enum ap_var_type type);
     void Log_Write_Parameters(void);
     virtual uint16_t start_new_log(void) = 0;
@@ -471,6 +471,27 @@ struct PACKED log_ANU6 {
     float p2x;
     float p2y;
     float p2z;
+    float v3x;
+    float v3y;
+    float v3z;
+    float p3x;
+    float p3y;
+    float p3z;
+    };
+
+struct PACKED log_ANU7 {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float Dq0;
+    float Dq1;
+    float Dq2;
+    float Dq3;
+    float d2x;
+    float d2y;
+    float d2z;
+    float d3x;
+    float d3y;
+    float d3z;
     };
 
 struct PACKED log_Cmd {
@@ -636,7 +657,7 @@ struct PACKED log_GPS_RAW {
 
 struct PACKED log_Esc {
     LOG_PACKET_HEADER;
-    uint64_t time_us;     
+    uint64_t time_us;
     int16_t rpm;
     int16_t voltage;
     int16_t current;
@@ -770,7 +791,9 @@ Format characters in the format string for binary log messages
     { LOG_ANU5_MSG, sizeof(log_ANU5), \
       "ANU5","Qfffffffff","TimeUS,a1,a2,a3,v1x,v1y,v1z,p1x,p1y,p1z" }, \
     { LOG_ANU6_MSG, sizeof(log_ANU6), \
-      "ANU6","Qffffff","TimeUS,v2x,v2y,v2z,p2x,p2y,p2z" }, \
+      "ANU6","Qffffffffffff","TimeUS,v2x,v2y,v2z,p2x,p2y,p2z,v3x,v3y,v3z,p3x,p3y,p3z" }, \
+      { LOG_ANU7_MSG, sizeof(log_ANU7), \
+      "ANU7","Qffffffffff","TimeUS,Dq0,Dq1,Dq2,Dq3,d2x,d2y,d2z,d3x,d3y,d3z" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_UBX1_MSG, sizeof(log_Ubx1), \
@@ -886,6 +909,7 @@ Format characters in the format string for binary log messages
 #define LOG_ANU4_MSG      186
 #define LOG_ANU5_MSG      187
 #define LOG_ANU6_MSG      188
+#define LOG_ANU7_MSG      189
 
 // message types 200 to 210 reversed for GPS driver use
 // message types 211 to 220 reversed for autotune use

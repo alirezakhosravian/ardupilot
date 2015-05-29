@@ -373,11 +373,11 @@ protected:
     AP_Int8 _gps_minsats;
     AP_Int8 _gps_delay;
 
-#if AHRS_EKF_USE_ALWAYS
-    static const int8_t _ekf_use = EKF_USE_WITHOUT_FALLBACK;
-#else
+//#if AHRS_EKF_USE_ALWAYS
+//    static const int8_t _ekf_use = EKF_USE_WITHOUT_FALLBACK;
+//#else
     AP_Int8 _ekf_use;
-#endif
+//#endif
 
     // flags structure
     struct ahrs_flags {

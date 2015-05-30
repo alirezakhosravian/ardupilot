@@ -63,6 +63,7 @@ public:
     typedef VectorN<ftype,14> Vector14;
     typedef VectorN<ftype,15> Vector15;
     typedef VectorN<ftype,22> Vector22;
+    typedef VectorN<ftype,31> Vector31;
     typedef VectorN<VectorN<ftype,3>,3> Matrix3;
     typedef VectorN<VectorN<ftype,22>,22> Matrix22;
     typedef VectorN<VectorN<ftype,50>,22> Matrix22_50;

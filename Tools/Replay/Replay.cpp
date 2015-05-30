@@ -42,6 +42,7 @@
 #include <AP_InertialSensor.h>
 #include <AP_InertialNav.h>
 #include <AP_NavEKF.h>
+#include <AP_NavEKF2.h>
 #include <AP_Mission.h>
 #include <AP_Rally.h>
 #include <AP_BattMonitor.h>

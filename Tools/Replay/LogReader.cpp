@@ -84,6 +84,7 @@ MsgHandler_PARM *parameter_handler;
   messages which we will be generating, so should be discarded
  */
 static const char *generated_types[] = { "EKF1", "EKF2", "EKF3", "EKF4", "EKF5", 
+                                         "ANU1", "ANU2", "ANU3", "ANU4", "ANU5", 
                                          "AHR2", "POS", NULL };
 
 /*

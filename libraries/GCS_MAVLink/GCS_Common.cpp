@@ -244,7 +244,7 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
         float v2;
         float v3;
         float v4;
-        ekf2.getSwitchEstimate(v1,v2,v3,v4,ekf2.est_sel);
+//        ekf2.getSwitchEstimate(v1,v2,v3,v4,ekf2.est_sel);
         mavlink_msg_ahrs3_send(chan,
                                euler.x,
                                euler.y,

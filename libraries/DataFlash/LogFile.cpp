@@ -1121,7 +1121,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         gyrX    : (int16_t)(100*degrees(gyroBias.x)), // cd/sec, displayed as deg/sec due to format string
         gyrY    : (int16_t)(100*degrees(gyroBias.y)), // cd/sec, displayed as deg/sec due to format string
         gyrZ    : (int16_t)(100*degrees(gyroBias.z)) // cd/sec, displayed as deg/sec due to format string
-};
+    };
     WriteBlock(&pkt, sizeof(pkt));
 
 	// Write second EKF packet
@@ -1181,9 +1181,12 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
 	Vector3f magVar;
 	float tasVar;
     Vector2f offset;
-    uint8_t faultStatus;
+    uint8_t faultStatus, timeoutStatus;
+    nav_filter_status solutionStatus;
     ahrs.get_NavEKF2().getVariances(velVar, posVar, hgtVar, magVar, tasVar, offset);
     ahrs.get_NavEKF2().getFilterFaults(faultStatus);
+    ahrs.get_NavEKF2().getFilterTimeouts(timeoutStatus);
+    ahrs.get_NavEKF2().getFilterStatus(solutionStatus);
     struct log_ANU4 pkt4 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU4_MSG),
         time_us : hal.scheduler->micros64(),
@@ -1197,10 +1200,11 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         offsetNorth : (int8_t)(offset.x),
         offsetEast : (int8_t)(offset.y),
         faults : (uint8_t)(faultStatus),
-        staticmode : (uint8_t)(ahrs.get_NavEKF2().getStaticMode())
+        timeouts : (uint8_t)(timeoutStatus),
+        solution : (uint16_t)(solutionStatus.value)
     };
     WriteBlock(&pkt4, sizeof(pkt4));
-
+/*
 	// Write predictor attitude packet
 	NavEKF2 &ekf2 = ahrs.get_NavEKF2();
     Quaternion attp;
@@ -1230,20 +1234,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         p1y    : (float)(posp1.y), // metres East
         p1z    : (float)(posp1.z), // metres Down
     };
-//    struct log_ANU5 pkt5 = {
-//        LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
-//        time_us  : hal.scheduler->micros64(),
-//        a1     : (float)(attp.q1),
-//        a2     : (float)(attp.q2),
-//        a3     : (float)(attp.q3),
-//        a4     : (float)(attp.q4),
-//        v1x    : (float)(velp1.x), // velocity North (m/s)
-//        v1y    : (float)(velp1.y), // velocity East (m/s)
-//        v1z    : (float)(velp1.z), // velocity Down (m/s)
-//        p1x    : (float)(posp1.x), // metres North
-//        p1y    : (float)(posp1.y), // metres East
-//        p1z    : (float)(posp1.z), // metres Down
-//    };
+
     WriteBlock(&pkt5, sizeof(pkt5));
 
 	// Write predictor mixed-invariant packet
@@ -1258,6 +1249,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         p2z    : (float)(posp2.z), // metres Down
     };
     WriteBlock(&pkt6, sizeof(pkt6));
+*/
 }
 
 #endif

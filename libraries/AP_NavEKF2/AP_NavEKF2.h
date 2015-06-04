@@ -1,11 +1,8 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
-  This library is based on the original work of Paul Riseborough.
-  A 22 state EKF based on https://github.com/priseborough/InertialNav
+  22 state EKF based on https://github.com/priseborough/InertialNav
 
-  This library has been modified by Alireza Khosravian and Sean O'Brien in order to be combined
-  with the predictor library AP_Predictors in order to effectively compensate for measurement delays.
-  This filter combined with AP_Predictors is particularly useful when dealing with large sensor delays.
+  Converted from Matlab to C++ by Paul Riseborough
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,10 +28,6 @@
 #include <AP_Compass.h>
 #include <AP_RangeFinder.h>
 #include <AP_Param.h>
-#include "AP_Predictors.h"
-
-
-
 
 // #define MATH_CHECK_INDEXES 1
 
@@ -43,8 +36,6 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 #include <systemlib/perf_counter.h>
 #endif
-
-
 
 
 class AP_AHRS;
@@ -86,72 +77,7 @@ public:
     // Constructor
     NavEKF2(const AP_AHRS *ahrs, AP_Baro &baro, RangeFinder &rng);
 
-#define BUFFER_SIZE  50   //  buffer size for sensors, this allows buffering of at least BUFFER_SIZE*20 ms=MAX_MSDELAY of data
-#define MAX_MSDELAY  BUFFER_SIZE*20   // maximum allowed delay
-#define MAX_MSERR    20  // Maximum ms time error that we allow when reading from sensor buffers.
-
-    void BestIndex(uint32_t &closestTime, uint16_t &closestStoreIndex, uint32_t (&timeStamp)[BUFFER_SIZE], AP_Int16 &_msecTotalDelay, AP_Int16 &_msecSensorDelay);
-    void storeDataFloat(float &data, float (&buffer)[BUFFER_SIZE], uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime);
-    void storeDataVector(Vector3f &data, VectorN<Vector3f,BUFFER_SIZE> &buffer, uint32_t &lastStoreTime, uint32_t (&timeStamp)[BUFFER_SIZE], uint16_t &storeIndex, uint32_t &currentTime);
-    AP_Int16 _msecEkfDelay;
-
-    uint16_t storeIndexIMU;
-    uint32_t lastAngRateStoreTime_ms;
-    VectorN<Vector3f,BUFFER_SIZE> storeddAngIMU;
-    VectorN<Vector3f,BUFFER_SIZE> storeddVelIMU1;
-    VectorN<Vector3f,BUFFER_SIZE>  storeddVelIMU2;
-    uint32_t angRateTimeStamp[BUFFER_SIZE];
-    VectorN<ftype,BUFFER_SIZE>  storeddtIMU;
-    ftype dtIMU1;
-    Vector3f dAngIMU1;
-    Vector3f dVelIMU11;
-    Vector3f dVelIMU21;
-
-    uint16_t storeIndexVel;
-    uint32_t lastVelStoreTime_ms;
-    VectorN<Vector3f,BUFFER_SIZE> storedVel;
-    uint32_t VelTimeStamp[BUFFER_SIZE];
-    float storedgpsNoiseScaler[BUFFER_SIZE];
-    AP_Int8 stored_fusionModeGPS[BUFFER_SIZE];
-    VectorN<Vector2f,BUFFER_SIZE> storedgpsPosNE;
-
-    uint16_t storeIndexMag;
-    uint32_t lastMagStoreTime_ms;
-    VectorN<Vector3f,BUFFER_SIZE> storedMag;
-    uint32_t MagTimeStamp[BUFFER_SIZE];
-
-
-    uint16_t storeIndexTas;
-    uint32_t lastTasStoreTime_ms;
-    float storedTas[BUFFER_SIZE];
-    uint32_t TasTimeStamp[BUFFER_SIZE];
-
-    uint16_t storeIndexHgt;
-    uint32_t lastHgtStoreTime_ms;
-    float storedHgt[BUFFER_SIZE];
-    uint32_t HgtTimeStamp[BUFFER_SIZE];
-    uint32_t lastHgtTimeBuffer[BUFFER_SIZE];
-
     AP_Int8 est_sel;
-
-    uint32_t lastFixTime_ms1;
-    uint32_t secondLastFixTime_ms1;
-    Vector3f velNED1;
-
-    uint32_t lastMagUpdate1;
-    Vector3f magData1;
-
-    uint32_t lastHgtMeasTime1;
-    uint32_t lastHgtTime_ms1;
-    float hgtMea1;
-
-    uint32_t lastAirspeedUpdate1;
-    float VtasMeas1;
-
-    AP_Predictors test_Predictor;
-    AP_Predictors &get_Predictor(void) {
-        return test_Predictor;
-    }
 
     // This function is used to initialise the filter whilst moving, using the AHRS DCM solution
     // It should NOT be used to re-initialise after a timeout as DCM will also be corrupted
@@ -176,11 +102,9 @@ public:
     // return the last calculated NED position relative to the reference point (m).
     // return false if no position is available
     bool getPosNED(Vector3f &pos) const;
-    bool getPosNED2(Vector3f &pos) const;
 
     // return NED velocity in m/s
     void getVelNED(Vector3f &vel) const;
-    void getVelNED2(Vector3f &vel) const;
 
     // return body axis gyro bias estimates in rad/sec
     void getGyroBias(Vector3f &gyroBias) const;
@@ -204,19 +128,14 @@ public:
     void getMagXYZ(Vector3f &magXYZ) const;
 
     // return the last calculated latitude, longitude and height
-    bool getLLH2(struct Location &loc) const;
-    // return the last predicted latitude, longitude and height from the sellected predictor
     bool getLLH(struct Location &loc) const;
 
     // return the Euler roll, pitch and yaw angle in radians
     void getEulerAngles(Vector3f &eulers) const;
-    void getEulerAngles2(Vector3f &eulers) const;
 
     void getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
 
     // return the transformation matrix from XYZ (body) to NED axes
-    void getRotationBodyToNED2(Matrix3f &mat) const;
-    // return the predicted transformation matrix from XYZ (body) to NED axes
     void getRotationBodyToNED(Matrix3f &mat) const;
 
     // return the quaternions defining the rotation from NED to XYZ (body) axes
@@ -229,14 +148,11 @@ public:
     void  getVariances(float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset) const;
 
     // return StaticMode state
-    bool getStaticMode(void) const {
-        return staticMode;
-    }
+    bool getStaticMode(void) const { return staticMode; }
 
     // should we use the compass? This is public so it can be used for
     // reporting via ahrs.use_compass()
     bool use_compass(void) const;
-
 
     /*
     return the filter fault status as a bitmasked integer
@@ -253,8 +169,6 @@ public:
     void  getFilterFaults(uint8_t &faults) const;
 
     static const struct AP_Param::GroupInfo var_info[];
-
-
 
 private:
     const AP_AHRS *_ahrs;
@@ -449,8 +363,6 @@ private:
     uint16_t _msecBetaAvg;          // maximum number of msec between synthetic sideslip measurements
     float dtVelPos;                 // average of msec between position and velocity corrections
 
-    AP_Int8 pred_sel;               // sellects the predictor to be fed into the control instead on EKF estimates (pred_sel=0 choses the first predictor and pred_sel=1 chooses the second predictor).
-
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised
     bool velHealth;                 // boolean true if velocity measurements have passed innovation consistency check
@@ -468,15 +380,15 @@ private:
     Matrix22 KH;                    // intermediate result used for covariance updates
     Matrix22 KHP;                   // intermediate result used for covariance updates
     Matrix22 P;                     // covariance matrix
-    VectorN<state_elements,BUFFER_SIZE> storedStates;       // state vectors stored for the last 50 time steps  // We should get rid of this variable later on since we do not use it anymore.
-    uint32_t statetimeStamp[BUFFER_SIZE];    // time stamp for each state vector stored  // We should get rid of this variable later on since we do not use it anymore.
+    VectorN<state_elements,50> storedStates;       // state vectors stored for the last 50 time steps
+    uint32_t statetimeStamp[50];    // time stamp for each state vector stored
     Vector3f correctedDelAng;       // delta angles about the xyz body axes corrected for errors (rad)
     Vector3f correctedDelVel12;     // delta velocities along the XYZ body axes for weighted average of IMU1 and IMU2 corrected for errors (m/s)
     Vector3f correctedDelVel1;      // delta velocities along the XYZ body axes for IMU1 corrected for errors (m/s)
     Vector3f correctedDelVel2;      // delta velocities along the XYZ body axes for IMU2 corrected for errors (m/s)
     Vector3f summedDelAng;          // corrected & summed delta angles about the xyz body axes (rad)
     Vector3f summedDelVel;          // corrected & summed delta velocities along the XYZ body axes (m/s)
-    Vector3f prevDelAng;            // previous delta angle use for INS coning error compensation
+	Vector3f prevDelAng;            // previous delta angle use for INS coning error compensation
     Vector3f lastGyroBias;          // previous gyro bias vector used by filter divergence check
     Matrix3f prevTnb;               // previous nav to body transformation used for INS earth rotation compensation
     ftype accNavMag;                // magnitude of navigation accel - used to adjust GPS obs variance (m/s^2)
@@ -543,7 +455,7 @@ private:
     uint32_t velFailTime;           // time stamp when GPS velocity measurement last failed covaraiance consistency check (msec)
     uint32_t posFailTime;           // time stamp when GPS position measurement last failed covaraiance consistency check (msec)
     uint32_t hgtFailTime;           // time stamp when height measurement last failed covaraiance consistency check (msec)
-    uint16_t storeIndex;             // State vector storage index
+    uint8_t storeIndex;             // State vector storage index
     uint32_t lastStateStoreTime_ms; // time of last state vector storage
     uint32_t lastFixTime_ms;        // time of last GPS fix used to determine if new data has arrived
     uint32_t secondLastFixTime_ms;  // time of second last GPS fix used to determine how long since last update
@@ -595,7 +507,7 @@ private:
     // magnetometer X,Y,Z measurements are fused across three time steps
     // to level computational load as this is an expensive operation
     struct {
-        ftype q0;
+    	ftype q0;
         ftype q1;
         ftype q2;
         ftype q3;
@@ -605,12 +517,12 @@ private:
         ftype magXbias;
         ftype magYbias;
         ftype magZbias;
-        uint16_t obsIndex;
+        uint8_t obsIndex;
         Matrix3f DCM;
         Vector3f MagPred;
         ftype R_MAG;
         ftype SH_MAG[9];
-    } mag_state;
+	} mag_state;
 
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN

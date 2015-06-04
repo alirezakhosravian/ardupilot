@@ -1199,63 +1199,6 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     };
     WriteBlock(&pkt4, sizeof(pkt4));
 
-	// Write predictor attitude packet
-	NavEKF2 &ekf2 = ahrs.get_NavEKF2();
-    Quaternion attp;
-    Vector3f eulp;
-    Vector3f velp1;
-    Vector3f posp1;
-    Vector3f velp2;
-    Vector3f posp2;
-    ekf2.getEulerAngles2(eulp);
-    ekf2.getPosNED2(posp1);
-    ekf2.getVelNED2(velp1);
-    //ekf2.get_Predictor().getAttitudePrediction(attp);
-    //ekf2.get_Predictor().getPositionPrediction(posp1);
-    ekf2.get_Predictor().getPosition2Prediction(posp2);
-    //ekf2.get_Predictor().getVelocityPrediction(velp1);
-    ekf2.get_Predictor().getVelocity2Prediction(velp2);
-    struct log_ANU5 pkt5 = {
-        LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
-        time_us  : hal.scheduler->micros64(),
-        a1     : (float)(eulp.x),
-        a2     : (float)(eulp.y),
-        a3     : (float)(eulp.z),
-        v1x    : (float)(velp1.x), // velocity North (m/s)
-        v1y    : (float)(velp1.y), // velocity East (m/s)
-        v1z    : (float)(velp1.z), // velocity Down (m/s)
-        p1x    : (float)(posp1.x), // metres North
-        p1y    : (float)(posp1.y), // metres East
-        p1z    : (float)(posp1.z), // metres Down
-    };
-//    struct log_ANU5 pkt5 = {
-//        LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
-//        time_us  : hal.scheduler->micros64(),
-//        a1     : (float)(attp.q1),
-//        a2     : (float)(attp.q2),
-//        a3     : (float)(attp.q3),
-//        a4     : (float)(attp.q4),
-//        v1x    : (float)(velp1.x), // velocity North (m/s)
-//        v1y    : (float)(velp1.y), // velocity East (m/s)
-//        v1z    : (float)(velp1.z), // velocity Down (m/s)
-//        p1x    : (float)(posp1.x), // metres North
-//        p1y    : (float)(posp1.y), // metres East
-//        p1z    : (float)(posp1.z), // metres Down
-//    };
-    WriteBlock(&pkt5, sizeof(pkt5));
-
-	// Write predictor mixed-invariant packet
-    struct log_ANU6 pkt6 = {
-        LOG_PACKET_HEADER_INIT(LOG_ANU6_MSG),
-        time_us  : hal.scheduler->micros64(),
-        v2x    : (float)(velp2.x), // velocity North (m/s)
-        v2y    : (float)(velp2.y), // velocity East (m/s)
-        v2z    : (float)(velp2.z), // velocity Down (m/s)
-        p2x    : (float)(posp2.x), // metres North
-        p2y    : (float)(posp2.y), // metres East
-        p2z    : (float)(posp2.z), // metres Down
-    };
-    WriteBlock(&pkt6, sizeof(pkt6));
 }
 
 #endif

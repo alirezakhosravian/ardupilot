@@ -1202,6 +1202,27 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         solution : (uint16_t)(solutionStatus.value)
     };
     WriteBlock(&pkt4, sizeof(pkt4));
+
+
+    // Write ANU5 packet
+	NavEKF2 &ekf2 = ahrs.get_NavEKF2();
+    Vector3f vecTmp1;
+    Vector3f vecTmp2;
+    ekf2.getTemp(vecTmp1,vecTmp2);
+
+    struct log_ANU5 pkt5 = {
+        LOG_PACKET_HEADER_INIT(LOG_ANU5_MSG),
+        time_us  : hal.scheduler->micros64(),
+        v1x     : (float)(vecTmp1.x),
+        v1y     : (float)(vecTmp1.y),
+        v1z     : (float)(vecTmp1.z),
+        v2x    : (float)(vecTmp2.x), // velocity North (m/s)
+        v2y    : (float)(vecTmp2.y), // velocity East (m/s)
+        v2z    : (float)(vecTmp2.z) // velocity Down (m/s)
+    };
+    WriteBlock(&pkt5, sizeof(pkt5));
+
+
 /*
 	// Write predictor attitude packet
 	NavEKF2 &ekf2 = ahrs.get_NavEKF2();

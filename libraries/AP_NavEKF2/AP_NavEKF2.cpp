@@ -13,6 +13,7 @@
 #include <AP_AHRS.h>
 #include <AP_Param.h>
 #include <AP_Vehicle.h>
+#include "AP_Predictors.h"
 
 #include <stdio.h>
 
@@ -1202,6 +1203,29 @@ void NavEKF2::UpdateStrapdownEquationsNED()
 
     // limit states to protect against divergence
     ConstrainStates();
+
+
+ /////////////////////////// Calling the Predictor Update Functions Every 20 ms ///////////////////////////////////////////////////////////
+//    Vector3f tilde_Vel;
+//    Vector3f corrected_tilde_Vel1;
+//    Vector3f corrected_tilde_Vel2;
+    Vector3f corrected_tilde_Vel12;
+    Vector3f tilde_q;
+
+    tilde_q = correctedDelAng;
+    corrected_tilde_Vel12 = correctedDelVel12;
+
+
+/*
+    corrected_tilde_Vel1 = dVelIMU11;
+    corrected_tilde_Vel2 = dVelIMU21;
+    corrected_tilde_Vel1.z -= state.accel_zbias1;
+    corrected_tilde_Vel2.z -= state.accel_zbias2;
+    corrected_tilde_Vel12 =  corrected_tilde_Vel1* IMU1_weighting +  corrected_tilde_Vel2* (1.0f - IMU1_weighting);
+*/
+    test_Predictor.UpdatePredictorStates(tilde_q, corrected_tilde_Vel12, dtIMUactual, imuSampleTime_ms);
+
+
 }
 
 // calculate the predicted state covariance matrix
@@ -2161,6 +2185,26 @@ void NavEKF2::FuseVelPosNED()
                 if (obsIndex <= 2)
                 {
                     innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - observation[obsIndex];
+
+                    Vector3f temp_velMeas;
+                    temp_velMeas[0] = observation[0];
+                    temp_velMeas[1] = observation[1];
+                    temp_velMeas[2] = observation[2];
+
+                    uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
+                    if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                        tmpVelDelay = 200; // defualt value. I should change it later
+                    }
+
+                    state_elements temp_state;
+                    RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+                    Quaternion temp_quat;
+                    temp_quat = temp_state.quat;
+                    test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
+                    //printf("%u\n",imuSampleTime_ms);
+                   // printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
+                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
+
                     R_OBS[obsIndex] *= sq(gpsNoiseScaler);
                 }
                 else if (obsIndex == 3 || obsIndex == 4) {
@@ -2609,7 +2653,17 @@ void NavEKF2::FuseMagnetometer()
         magFuseRequired = false;
     }
     // calculate the measurement innovation
-    innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
+//    innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
+
+    uint16_t tmpMagDelay = (uint16_t) (imuSampleTime_ms-lastMagUpdate/1000 + msecMagDelay);
+    if (tmpMagDelay < 0 || tmpMagDelay > 1000){ // limite the maximum delay. also verify that tmpMagDelay is positive
+        tmpMagDelay = 40; // defualt value. I should change it later
+    }
+
+//    printf("%u and %u and %u\n",imuSampleTime_ms,lastMagUpdate,tmpMagDelay);
+    test_Predictor.VectorPredictor(magDataPredicted,magData,imuSampleTime_ms,tmpMagDelay);
+    innovMag[obsIndex] = MagPred[obsIndex] - magDataPredicted[obsIndex];
+
     // calculate the innovation test ratio
     magTestRatio[obsIndex] = sq(innovMag[obsIndex]) / (sq(_magInnovGate) * varInnovMag[obsIndex]);
     // check the last values from all components and set magnetometer health accordingly
@@ -4315,7 +4369,8 @@ void NavEKF2::readMagData()
         magData = _ahrs->get_compass()->get_field() * 0.001f;
 
         // get states stored at time closest to measurement time after allowance for measurement delay
-        RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - msecMagDelay));
+        // RecallStates(statesAtMagMeasTime, (imuSampleTime_ms - msecMagDelay));
+        statesAtMagMeasTime = state;
 
         // let other processes know that new compass data has arrived
         newDataMag = true;
@@ -5209,6 +5264,15 @@ void NavEKF2::detectOptFlowTakeoff(void)
         takeOffDetected = (takeOffDetected || (angRateVec.length() > 0.1f) || (rngMea > (rangeAtArming + 0.1f)));
     }
 }
+
+
+void NavEKF2::getTemp(Vector3f &retVec1, Vector3f &retVec2) const
+{
+    retVec1 = velNED;
+    retVec2 = velDataPredicted;
+
+}
+
 
 // provides the height limit to be observed by the control loops
 // returns false if no height limiting is required

@@ -444,6 +444,18 @@ struct PACKED log_ANU4 {
     uint8_t timeouts;
     uint16_t solution;
 };
+
+struct PACKED log_ANU5 {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float v1x;
+    float v1y;
+    float v1z;
+    float v2x;
+    float v2y;
+    float v2z;
+};
+
 /*
 struct PACKED log_ANU5 {
     LOG_PACKET_HEADER;
@@ -754,6 +766,8 @@ Format characters in the format string for binary log messages
       "ANU3","Qcccccchhhc","TimeUS,IVN,IVE,IVD,IPN,IPE,IPD,IMX,IMY,IMZ,IVT" }, \
     { LOG_ANU4_MSG, sizeof(log_ANU4), \
       "ANU4","QcccccccbbBBH","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,TS,SS" }, \
+    { LOG_ANU5_MSG, sizeof(log_ANU5), \
+      "ANU5","Qffffff","TimeUS,v1x,v1y,v1z,v2x,v2y,v2z" }, \
    /* { LOG_ANU5_MSG, sizeof(log_ANU5), \
       "ANU5","Qfffffffff","TimeUS,a1,a2,a3,v1x,v1y,v1z,p1x,p1y,p1z" }, \
     { LOG_ANU6_MSG, sizeof(log_ANU6), \
@@ -881,7 +895,7 @@ Format characters in the format string for binary log messages
 #define LOG_ANU2_MSG      184
 #define LOG_ANU3_MSG      185
 #define LOG_ANU4_MSG      186
-// #define LOG_ANU5_MSG      187
+#define LOG_ANU5_MSG      187
 // #define LOG_ANU6_MSG      188
 
 // message types 200 to 210 reversed for GPS driver use

@@ -30,6 +30,7 @@
 #include <AP_Nav_Common.h>
 #include <GCS_MAVLink.h>
 #include <AP_RangeFinder.h>
+#include "AP_Predictors.h"
 
 // #define MATH_CHECK_INDEXES 1
 
@@ -93,6 +94,12 @@ public:
 
     AP_Int8 est_sel;
 
+    AP_Predictors test_Predictor;
+    AP_Predictors &get_Predictor(void) {
+        return test_Predictor;
+    }
+
+
     // This function is used to initialise the filter whilst moving, using the AHRS DCM solution
     // It should NOT be used to re-initialise after a timeout as DCM will also be corrupted
     bool InitialiseFilterDynamic(void);
@@ -106,6 +113,8 @@ public:
 
     // Check basic filter health metrics and return a consolidated health status
     bool healthy(void) const;
+
+    void getTemp(Vector3f &retVec1, Vector3f &retVec2) const;
 
     // Return the last calculated NED position relative to the reference point (m).
     // If a calculated solution is not available, use the best available data and return false
@@ -265,6 +274,9 @@ private:
     const AP_AHRS *_ahrs;
     AP_Baro &_baro;
     const RangeFinder &_rng;
+
+    Vector3f magDataPredicted;
+    Vector3f velDataPredicted;
 
     // the states are available in two forms, either as a Vector34, or
     // broken down as individual elements. Both are equivalent (same

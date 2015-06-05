@@ -277,6 +277,8 @@ private:
 
     Vector3f magDataPredicted;
     Vector3f velDataPredicted;
+    Vector2f posDataPredicted;
+    float hgtDataPredicted;
 
     // the states are available in two forms, either as a Vector34, or
     // broken down as individual elements. Both are equivalent (same

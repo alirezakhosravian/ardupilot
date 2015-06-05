@@ -1223,7 +1223,8 @@ void NavEKF2::UpdateStrapdownEquationsNED()
     corrected_tilde_Vel2.z -= state.accel_zbias2;
     corrected_tilde_Vel12 =  corrected_tilde_Vel1* IMU1_weighting +  corrected_tilde_Vel2* (1.0f - IMU1_weighting);
 */
-    test_Predictor.UpdatePredictorStates(tilde_q, corrected_tilde_Vel12, dtIMUactual, imuSampleTime_ms);
+
+    test_Predictor.UpdatePredictorStates(tilde_q, corrected_tilde_Vel12, state.velocity, dtIMUactual, imuSampleTime_ms);
 
 
 }
@@ -2007,8 +2008,44 @@ void NavEKF2::FuseVelPosNED()
         // the accelerometers and we should disable the GPS and barometer innovation consistency checks.
         if (_fusionModeGPS == 0 && fuseVelData && (imuSampleTime_ms - lastHgtMeasTime) <  (2 * msecHgtAvg)) {
             // calculate innovations for height and vertical GPS vel measurements
-            float hgtErr  = statesAtHgtTime.position.z - observation[5];
-            float velDErr = statesAtVelTime.velocity.z - observation[2];
+            //float hgtErr  = statesAtHgtTime.position.z - observation[5];
+
+            float temp_hgtMeas = observation[5];
+
+            uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
+            if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                tmpHgtDelay = 60; // defualt value. I should change it later
+            }
+
+            test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
+            // printf("%u\n",imuSampleTime_ms);
+            // printf("%f and %f\n",observation[5],hgtDataPredicted);
+            float hgtErr  = statesAtHgtTime.position.z - hgtDataPredicted;
+
+
+            //float velDErr = statesAtVelTime.velocity.z - observation[2];
+            Vector3f temp_velMeas;
+            temp_velMeas[0] = observation[0];
+            temp_velMeas[1] = observation[1];
+            temp_velMeas[2] = observation[2];
+
+            uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
+            if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                tmpVelDelay = 200; // defualt value. I should change it later
+            }
+
+            state_elements temp_state;
+            RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+            Quaternion temp_quat;
+            temp_quat = temp_state.quat;
+            test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
+                    //printf("%u\n",imuSampleTime_ms);
+                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
+                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
+                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
+            float velDErr = statesAtVelTime.velocity.z - velDataPredicted[2];
+
+
             // check if they are the same sign and both more than 3-sigma out of bounds
             if ((hgtErr*velDErr > 0.0f) && (sq(hgtErr) > 9.0f * (P[9][9] + R_OBS_DATA_CHECKS[5])) && (sq(velDErr) > 9.0f * (P[6][6] + R_OBS_DATA_CHECKS[2]))) {
                 badIMUdata = true;
@@ -2021,8 +2058,27 @@ void NavEKF2::FuseVelPosNED()
         // test position measurements
         if (fusePosData) {
             // test horizontal position measurements
-            innovVelPos[3] = statesAtPosTime.position.x - observation[3];
-            innovVelPos[4] = statesAtPosTime.position.y - observation[4];
+            //innovVelPos[3] = statesAtPosTime.position.x - observation[3];
+            //innovVelPos[4] = statesAtPosTime.position.y - observation[4];
+
+            Vector2f temp_posMeas;
+            temp_posMeas.x = observation[3];
+            temp_posMeas.y = observation[4];
+
+            uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
+            if (tmpPosDelay < 0 || tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                tmpPosDelay = 200; // defualt value. I should change it later
+            }
+
+            test_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay);
+            // printf("%u\n",imuSampleTime_ms);
+            // printf("%f and %f\n",observation[3],observation[4]);
+            // printf("%f and %f\n",posDataPredicted.x,posDataPredicted.y);
+                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
+            innovVelPos[3] = statesAtPosTime.position.x - posDataPredicted.x;
+            innovVelPos[4] = statesAtPosTime.position.y - posDataPredicted.y;
+
+
             varInnovVelPos[3] = P[7][7] + R_OBS_DATA_CHECKS[3];
             varInnovVelPos[4] = P[8][8] + R_OBS_DATA_CHECKS[4];
             // apply an innovation consistency threshold test, but don't fail if bad IMU data
@@ -2078,9 +2134,34 @@ void NavEKF2::FuseVelPosNED()
                 // velocity states start at index 4
                 stateIndex   = i + 4;
                 // calculate innovations using blended and single IMU predicted states
-                velInnov[i]  = statesAtVelTime.velocity[i] - observation[i]; // blended
-                velInnov1[i] = statesAtVelTime.vel1[i] - observation[i]; // IMU1
-                velInnov2[i] = statesAtVelTime.vel2[i] - observation[i]; // IMU2
+                //velInnov[i]  = statesAtVelTime.velocity[i] - observation[i]; // blended
+                //velInnov1[i] = statesAtVelTime.vel1[i] - observation[i]; // IMU1
+                //velInnov2[i] = statesAtVelTime.vel2[i] - observation[i]; // IMU2
+                Vector3f temp_velMeas;
+                temp_velMeas[0] = observation[0];
+                temp_velMeas[1] = observation[1];
+                temp_velMeas[2] = observation[2];
+
+                uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
+                if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    tmpVelDelay = 200; // defualt value. I should change it later
+                }
+
+                state_elements temp_state;
+                RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+                Quaternion temp_quat;
+                temp_quat = temp_state.quat;
+                test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
+                    //printf("%u\n",imuSampleTime_ms);
+                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
+                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
+                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
+                velInnov[i]  = statesAtVelTime.velocity[i] - velDataPredicted[i]; // blended
+                velInnov1[i] = statesAtVelTime.vel1[i] - velDataPredicted[i]; // IMU1
+                velInnov2[i] = statesAtVelTime.vel2[i] - velDataPredicted[i]; // IMU2
+
+
+
                 // calculate innovation variance
                 varInnovVelPos[i] = P[stateIndex][stateIndex] + R_OBS_DATA_CHECKS[i];
                 // calculate error weightings for single IMU velocity states using
@@ -2131,7 +2212,20 @@ void NavEKF2::FuseVelPosNED()
         // test height measurements
         if (fuseHgtData) {
             // calculate height innovations
-            innovVelPos[5] = statesAtHgtTime.position.z - observation[5];
+            // innovVelPos[5] = statesAtHgtTime.position.z - observation[5];
+
+            float temp_hgtMeas = observation[5];
+
+            uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
+            if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                tmpHgtDelay = 60; // defualt value. I should change it later
+            }
+
+            test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
+            // printf("%u\n",imuSampleTime_ms);
+            // printf("%f and %f\n",observation[5],hgtDataPredicted);
+            innovVelPos[5] = statesAtHgtTime.position.z - hgtDataPredicted;
+
 
             varInnovVelPos[5] = P[9][9] + R_OBS_DATA_CHECKS[5];
             // calculate the innovation consistency test ratio
@@ -2184,7 +2278,7 @@ void NavEKF2::FuseVelPosNED()
                 // adjust scaling on GPS measurement noise variances if not enough satellites
                 if (obsIndex <= 2)
                 {
-                    innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - observation[obsIndex];
 
                     Vector3f temp_velMeas;
                     temp_velMeas[0] = observation[0];
@@ -2202,16 +2296,49 @@ void NavEKF2::FuseVelPosNED()
                     temp_quat = temp_state.quat;
                     test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
                     //printf("%u\n",imuSampleTime_ms);
-                   // printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
+                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
                     //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
+                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
+                    innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - velDataPredicted[obsIndex];
 
                     R_OBS[obsIndex] *= sq(gpsNoiseScaler);
                 }
                 else if (obsIndex == 3 || obsIndex == 4) {
-                    innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - observation[obsIndex];
+
+                    Vector2f temp_posMeas;
+                    temp_posMeas.x = observation[3];
+                    temp_posMeas.y = observation[4];
+
+                    uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
+                    if (tmpPosDelay < 0 || tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    tmpPosDelay = 200; // defualt value. I should change it later
+                    }
+
+                    test_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay);
+                    if (obsIndex == 3) {
+                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.x;
+                    } else {  // obsIndex is 4 so we inject y element
+                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.y;
+                    }
+
                     R_OBS[obsIndex] *= sq(gpsNoiseScaler);
                 } else {
-                    innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - observation[obsIndex];
+
+                    float temp_hgtMeas = observation[5];
+
+                    uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
+                    if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                        tmpHgtDelay = 60; // defualt value. I should change it later
+                    }
+
+                    test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
+                    // printf("%u\n",imuSampleTime_ms);
+                    // printf("%f and %f\n",observation[5],hgtDataPredicted);
+                    innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - hgtDataPredicted;
+
+
                     if (obsIndex == 5) {
                         static const float gndMaxBaroErr = 4.0f;
                         static const float gndBaroInnovFloor = -0.5f;
@@ -2275,8 +2402,22 @@ void NavEKF2::FuseVelPosNED()
                 // Correct states that have been predicted using single (not blended) IMU data
                 if (obsIndex == 5){
                     // Calculate height measurement innovations using single IMU states
-                    float hgtInnov1 = statesAtHgtTime.posD1 - observation[obsIndex];
-                    float hgtInnov2 = statesAtHgtTime.posD2 - observation[obsIndex];
+                    //float hgtInnov1 = statesAtHgtTime.posD1 - observation[obsIndex];
+                    //float hgtInnov2 = statesAtHgtTime.posD2 - observation[obsIndex];
+
+                    float temp_hgtMeas = observation[5];
+
+                    uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
+                    if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                        tmpHgtDelay = 60; // defualt value. I should change it later
+                    }
+
+                    test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
+                    // printf("%u\n",imuSampleTime_ms);
+                    // printf("%f and %f\n",observation[5],hgtDataPredicted);
+                    float hgtInnov1 = statesAtHgtTime.posD1 - hgtDataPredicted;
+                    float hgtInnov2 = statesAtHgtTime.posD2 - hgtDataPredicted;
+
 
                     if (vehicleArmed) {
                         // Correct single IMU prediction states using height measurement, limiting rate of change of bias to 0.005 m/s3
@@ -4226,8 +4367,10 @@ void NavEKF2::readGpsData()
 
         // get state vectors that were stored at the time that is closest to when the the GPS measurement
         // time after accounting for measurement delays
-        RecallStates(statesAtVelTime, (imuSampleTime_ms - constrain_int16(_msecVelDelay, 0, 500)));
-        RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, 500)));
+        // RecallStates(statesAtVelTime, (imuSampleTime_ms - constrain_int16(_msecVelDelay, 0, 500)));
+        statesAtVelTime = state;
+        //RecallStates(statesAtPosTime, (imuSampleTime_ms - constrain_int16(_msecPosDelay, 0, 500)));
+        statesAtPosTime = state;
 
         // read the NED velocity from the GPS
         velNED = _ahrs->get_gps().velocity();
@@ -4319,7 +4462,8 @@ void NavEKF2::readHgtData()
                 // use baro measurement and correct for baro offset - failsafe use only as baro will drift
                 hgtMea = max(_baro.get_altitude() - baroHgtOffset, rngOnGnd);
                 // get states that were stored at the time closest to the measurement time, taking measurement delay into account
-                RecallStates(statesAtHgtTime, (imuSampleTime_ms - msecHgtDelay));
+                //RecallStates(statesAtHgtTime, (imuSampleTime_ms - msecHgtDelay));
+                statesAtHgtTime = state;
             } else {
                 // If we are on ground and have no range finder reading, assume the nominal on-ground height
                 hgtMea = rngOnGnd;
@@ -4333,7 +4477,8 @@ void NavEKF2::readHgtData()
             // use baro measurement and correct for baro offset
             hgtMea = _baro.get_altitude();
             // get states that were stored at the time closest to the measurement time, taking measurement delay into account
-            RecallStates(statesAtHgtTime, (imuSampleTime_ms - msecHgtDelay));
+            //RecallStates(statesAtHgtTime, (imuSampleTime_ms - msecHgtDelay));
+            statesAtHgtTime = state;
         }
 
         // filtered baro data used to provide a reference for takeoff
@@ -5268,8 +5413,16 @@ void NavEKF2::detectOptFlowTakeoff(void)
 
 void NavEKF2::getTemp(Vector3f &retVec1, Vector3f &retVec2) const
 {
-    retVec1 = velNED;
-    retVec2 = velDataPredicted;
+//    retVec1 = velNED;
+//    retVec2 = velDataPredicted;
+
+//    retVec1.x = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
+//    retVec1.y = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
+//    retVec2.x = posDataPredicted.x;
+//    retVec2.y = posDataPredicted.y;
+
+    retVec1.x = -hgtMea;
+    retVec2.x = hgtDataPredicted;
 
 }
 

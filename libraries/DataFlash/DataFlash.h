@@ -458,34 +458,35 @@ struct PACKED log_ANU5 {
     float v2x;
     float v2y;
     float v2z;
+    float Elat;
+    float Elng;
+    float Alat;
+    float Alng;
 };
 
-/*
-struct PACKED log_ANU5 {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    float a1;
-    float a2;
-    float a3;
-    float v1x;
-    float v1y;
-    float v1z;
-    float p1x;
-    float p1y;
-    float p1z;
-    };
 
 struct PACKED log_ANU6 {
     LOG_PACKET_HEADER;
     uint64_t time_us;
-    float v2x;
-    float v2y;
-    float v2z;
-    float p2x;
-    float p2y;
-    float p2z;
-    };
-*/
+    float v3x;
+    float v3y;
+    float v3z;
+    float v4x;
+    float v4y;
+    float v4z;
+};
+
+struct PACKED log_ANU7 {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float v5x;
+    float v5y;
+    float v5z;
+    float v6x;
+    float v6y;
+    float v6z;
+};
+
 struct PACKED log_Cmd {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -771,12 +772,12 @@ Format characters in the format string for binary log messages
     { LOG_ANU4_MSG, sizeof(log_ANU4), \
       "ANU4","QcccccccbbBBH","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,TS,SS" }, \
     { LOG_ANU5_MSG, sizeof(log_ANU5), \
-      "ANU5","Qffffff","TimeUS,v1x,v1y,v1z,v2x,v2y,v2z" }, \
-   /* { LOG_ANU5_MSG, sizeof(log_ANU5), \
-      "ANU5","Qfffffffff","TimeUS,a1,a2,a3,v1x,v1y,v1z,p1x,p1y,p1z" }, \
+      "ANU5","Qffffffffff","TimeUS,PNm,PEm,PDm,PNp,PEp,PDp,Elat,Elng,Alat,Alng" }, \
     { LOG_ANU6_MSG, sizeof(log_ANU6), \
-      "ANU6","Qffffff","TimeUS,v2x,v2y,v2z,p2x,p2y,p2z" }, \
-   */ { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
+      "ANU6","Qffffff","TimeUS,VNm,VEm,VDm,VNp,VEp,VDp" }, \
+    { LOG_ANU7_MSG, sizeof(log_ANU7), \
+      "ANU7","Qffffff","TimeUS,MXm,MYm,MZm,MXp,MYp,MZp" }, \
+    { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_UBX1_MSG, sizeof(log_Ubx1), \
       "UBX1", "QBHBBH",  "TimeUS,Instance,noisePerMS,jamInd,aPower,agcCnt" }, \
@@ -900,7 +901,8 @@ Format characters in the format string for binary log messages
 #define LOG_ANU3_MSG      185
 #define LOG_ANU4_MSG      186
 #define LOG_ANU5_MSG      187
-// #define LOG_ANU6_MSG      188
+#define LOG_ANU6_MSG      188
+#define LOG_ANU7_MSG      189
 
 // message types 200 to 210 reversed for GPS driver use
 // message types 211 to 220 reversed for autotune use

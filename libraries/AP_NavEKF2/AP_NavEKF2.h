@@ -115,6 +115,8 @@ public:
     bool healthy(void) const;
 
     void getTemp(Vector3f &retVec1, Vector3f &retVec2) const;
+    void getTemp2(Vector3f &retVec1, Vector3f &retVec2) const;
+    void getTemp3(Vector3f &retVec1, Vector3f &retVec2) const;
 
     // Return the last calculated NED position relative to the reference point (m).
     // If a calculated solution is not available, use the best available data and return false

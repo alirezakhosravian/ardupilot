@@ -5413,19 +5413,29 @@ void NavEKF2::detectOptFlowTakeoff(void)
 
 void NavEKF2::getTemp(Vector3f &retVec1, Vector3f &retVec2) const
 {
-//    retVec1 = velNED;
-//    retVec2 = velDataPredicted;
 
-//    retVec1.x = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
-//    retVec1.y = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
-//    retVec2.x = posDataPredicted.x;
-//    retVec2.y = posDataPredicted.y;
-
-    retVec1.x = -hgtMea;
-    retVec2.x = hgtDataPredicted;
+    retVec1.x = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
+    retVec1.y = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
+    retVec1.z = -hgtMea;
+    retVec2.x = posDataPredicted.x;
+    retVec2.y = posDataPredicted.y;
+    retVec2.z = hgtDataPredicted;   // hgtDataPredicted is ctually a prediction of PD, not hight
 
 }
 
+void NavEKF2::getTemp2(Vector3f &retVec1, Vector3f &retVec2) const
+{
+    retVec1 = velNED;
+    retVec2 = velDataPredicted;
+
+}
+
+void NavEKF2::getTemp3(Vector3f &retVec1, Vector3f &retVec2) const
+{
+    retVec1 = magData;
+    retVec2 = magDataPredicted;
+
+}
 
 // provides the height limit to be observed by the control loops
 // returns false if no height limiting is required

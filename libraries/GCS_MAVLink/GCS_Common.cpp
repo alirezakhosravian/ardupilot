@@ -240,6 +240,8 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
     NavEKF2 &ekf2 = ahrs.get_NavEKF2();
     ekf2.getEulerAngles(euler);
     ekf2.getLLH(loc);
+    float v1, v2, v3, v4;
+    ekf2.getSwitchV(v1,v2,v3,v4,ekf2.v_sel);
     mavlink_msg_ahrs3_send(chan,
                            euler.x,
                            euler.y,
@@ -247,7 +249,7 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
                            loc.alt*1.0e-2f,
                            loc.lat,
                            loc.lng,
-                           0, 0, 0, 0);
+                           v1, v2, v3, v4);
 }
 #endif
 

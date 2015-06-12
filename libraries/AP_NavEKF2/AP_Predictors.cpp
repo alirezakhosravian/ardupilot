@@ -64,7 +64,7 @@ void AP_Predictors::VectorPredictor(Vector3f &vecPredicted, Vector3f vec, uint32
 {
     Quaternion q_tmp;
     Quaternion q_tmp2;
-    Quaternion D_Delay;  //should delete this variabe from the header
+    Quaternion d_delay;  //should delete this variabe from the header
     Quaternion D_current;
 
     uint32_t bestTimeErr;
@@ -72,13 +72,13 @@ void AP_Predictors::VectorPredictor(Vector3f &vecPredicted, Vector3f vec, uint32
     uint16_t zero_16 = 0;
 
     BestIndex2(bestTimeErr, bestStoreIndex, DTimeStamp, currrentTimeStamp_ms, _msecTauDelay);  // check the bestTimeErr!!!!
-    D_Delay = storedD[bestStoreIndex];
+    d_delay = storedD[bestStoreIndex];
 //    printf("%u and %u and %u",currrentTimeStamp_ms,bestTimeErr,bestStoreIndex);
     BestIndex2(bestTimeErr, bestStoreIndex, DTimeStamp, currrentTimeStamp_ms, zero_16);
     D_current = storedD[bestStoreIndex];
 //    printf(" and %u and %u\n",bestTimeErr,bestStoreIndex);
 
- //   printf("quats: %f and %f and %f and %f\n",D_Delay.q1,D_Delay.q2,D_Delay.q3,D_Delay.q4);
+ //   printf("quats: %f and %f and %f and %f\n",d_delay.q1,d_delay.q2,d_delay.q3,d_delay.q4);
 //    printf("quats: %f and %f and %f and %f\n",D_current.q1,D_current.q2,D_current.q3,D_current.q4);
 
 // computing the inverse quaternion D_current^{-1}
@@ -87,11 +87,11 @@ void AP_Predictors::VectorPredictor(Vector3f &vecPredicted, Vector3f vec, uint32
     q_tmp.q3= -D_current.q3;
     q_tmp.q4= -D_current.q4;
 
-// multiplyig D_current^{-1} by D_Delay
-    q_tmp2.q1 = q_tmp.q1*D_Delay.q1 - q_tmp.q2*D_Delay.q2 - q_tmp.q3*D_Delay.q3 - q_tmp.q4*D_Delay.q4;
-    q_tmp2.q2 = q_tmp.q1*D_Delay.q2 + q_tmp.q2*D_Delay.q1 + q_tmp.q3*D_Delay.q4 - q_tmp.q4*D_Delay.q3;
-    q_tmp2.q3 = q_tmp.q1*D_Delay.q3 + q_tmp.q3*D_Delay.q1 + q_tmp.q4*D_Delay.q2 - q_tmp.q2*D_Delay.q4;
-    q_tmp2.q4 = q_tmp.q1*D_Delay.q4 + q_tmp.q4*D_Delay.q1 + q_tmp.q2*D_Delay.q3 - q_tmp.q3*D_Delay.q2;
+// multiplyig D_current^{-1} by d_delay
+    q_tmp2.q1 = q_tmp.q1*d_delay.q1 - q_tmp.q2*d_delay.q2 - q_tmp.q3*d_delay.q3 - q_tmp.q4*d_delay.q4;
+    q_tmp2.q2 = q_tmp.q1*d_delay.q2 + q_tmp.q2*d_delay.q1 + q_tmp.q3*d_delay.q4 - q_tmp.q4*d_delay.q3;
+    q_tmp2.q3 = q_tmp.q1*d_delay.q3 + q_tmp.q3*d_delay.q1 + q_tmp.q4*d_delay.q2 - q_tmp.q2*d_delay.q4;
+    q_tmp2.q4 = q_tmp.q1*d_delay.q4 + q_tmp.q4*d_delay.q1 + q_tmp.q2*d_delay.q3 - q_tmp.q3*d_delay.q2;
 
 // Normalizing the quaternion
     q_tmp2.normalize();
@@ -150,19 +150,19 @@ void AP_Predictors::VelPredictor(Vector3f &velocityPredicted, Vector3f velocity,
 
 
     Quaternion q_tmp;
-    Quaternion D_Delay;    //should delete this variabe from the header
+    Quaternion d_delay;    //should delete this variabe from the header
 
     BestIndex2(bestTimeErr, bestStoreIndex, DTimeStamp, currrentTimeStamp_ms, _msecTauDelay);  // check the bestTimeErr!!!!
-    D_Delay = storedD[bestStoreIndex];
+    d_delay = storedD[bestStoreIndex];
 // computing the inverse quaternion D_q_delay^{-1}
-    q_tmp[0]= D_Delay[0];
-    q_tmp[1]= -D_Delay[1];
-    q_tmp[2]= -D_Delay[2];
-    q_tmp[3]= -D_Delay[3];
+    q_tmp[0]= d_delay[0];
+    q_tmp[1]= -d_delay[1];
+    q_tmp[2]= -d_delay[2];
+    q_tmp[3]= -d_delay[3];
 
     Quaternion q_tmp_m;
 
-// computing the quaternion multiplication quat \times D_Delay^{-1}
+// computing the quaternion multiplication quat \times d_delay^{-1}
     q_tmp_m[0] = quat[0]*q_tmp[0] - quat[1]*q_tmp[1] - quat[2]*q_tmp[2] - quat[3]*q_tmp[3];
     q_tmp_m[1] = quat[0]*q_tmp[1] + quat[1]*q_tmp[0] + quat[2]*q_tmp[3] - quat[3]*q_tmp[2];
     q_tmp_m[2] = quat[0]*q_tmp[2] + quat[2]*q_tmp[0] + quat[3]*q_tmp[1] - quat[1]*q_tmp[3];

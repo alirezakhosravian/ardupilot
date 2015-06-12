@@ -174,7 +174,6 @@ private:
 
 
     uint32_t bestTime;
-    uint16_t bestStoreIndex;
 
 //    Matrix3f prevTnb_pred;
 //    Matrix3f Tbn_temp;

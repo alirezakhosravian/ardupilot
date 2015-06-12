@@ -2013,7 +2013,7 @@ void NavEKF2::FuseVelPosNED()
             float temp_hgtMeas = observation[5];
 
             uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-            if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+            if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                 tmpHgtDelay = 60; // defualt value. I should change it later
             }
 
@@ -2030,7 +2030,7 @@ void NavEKF2::FuseVelPosNED()
             temp_velMeas[2] = observation[2];
 
             uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-            if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+            if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                 tmpVelDelay = 200; // defualt value. I should change it later
             }
 
@@ -2066,7 +2066,7 @@ void NavEKF2::FuseVelPosNED()
             temp_posMeas.y = observation[4];
 
             uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
-            if (tmpPosDelay < 0 || tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+            if (tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                 tmpPosDelay = 200; // defualt value. I should change it later
             }
 
@@ -2143,7 +2143,7 @@ void NavEKF2::FuseVelPosNED()
                 temp_velMeas[2] = observation[2];
 
                 uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-                if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                     tmpVelDelay = 200; // defualt value. I should change it later
                 }
 
@@ -2217,7 +2217,7 @@ void NavEKF2::FuseVelPosNED()
             float temp_hgtMeas = observation[5];
 
             uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-            if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+            if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                 tmpHgtDelay = 60; // defualt value. I should change it later
             }
 
@@ -2286,7 +2286,7 @@ void NavEKF2::FuseVelPosNED()
                     temp_velMeas[2] = observation[2];
 
                     uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-                    if (tmpVelDelay < 0 || tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                         tmpVelDelay = 200; // defualt value. I should change it later
                     }
 
@@ -2311,7 +2311,7 @@ void NavEKF2::FuseVelPosNED()
                     temp_posMeas.y = observation[4];
 
                     uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
-                    if (tmpPosDelay < 0 || tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    if (tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                     tmpPosDelay = 200; // defualt value. I should change it later
                     }
 
@@ -2329,7 +2329,7 @@ void NavEKF2::FuseVelPosNED()
                     float temp_hgtMeas = observation[5];
 
                     uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-                    if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                         tmpHgtDelay = 60; // defualt value. I should change it later
                     }
 
@@ -2408,7 +2408,7 @@ void NavEKF2::FuseVelPosNED()
                     float temp_hgtMeas = observation[5];
 
                     uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-                    if (tmpHgtDelay < 0 || tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
+                    if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
                         tmpHgtDelay = 60; // defualt value. I should change it later
                     }
 
@@ -2797,7 +2797,7 @@ void NavEKF2::FuseMagnetometer()
 //    innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
 
     uint16_t tmpMagDelay = (uint16_t) (imuSampleTime_ms-lastMagUpdate/1000 + msecMagDelay);
-    if (tmpMagDelay < 0 || tmpMagDelay > 1000){ // limite the maximum delay. also verify that tmpMagDelay is positive
+    if (tmpMagDelay > 1000){ // limite the maximum delay. also verify that tmpMagDelay is positive
         tmpMagDelay = 40; // defualt value. I should change it later
     }
 

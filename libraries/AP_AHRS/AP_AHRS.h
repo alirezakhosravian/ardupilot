@@ -357,6 +357,8 @@ public:
     // time that the AHRS has been up
     virtual uint32_t uptime_ms(void) const = 0;
 
+    int8_t get_ekf_use(void) const { return _ekf_use.get(); }
+
 protected:
     AHRS_VehicleClass _vehicle_class;
 

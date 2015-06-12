@@ -37,11 +37,9 @@ public:
     // Constructor
 AP_AHRS_NavEKF(AP_InertialSensor &ins, AP_Baro &baro, AP_GPS &gps, RangeFinder &rng, NavEKF &_EKF, NavEKF2 &_EKF2) :
     AP_AHRS_DCM(ins, baro, gps),
-    EKF(_EKF),
+    EKF1(_EKF),
     EKF2(_EKF2),
-    ekf_started(false),
-    startup_delay_ms(1000),
-    start_time_ms(0)
+    startup_delay_ms(1000)
         {
             ekf1.started = false;
             ekf2.started = false;

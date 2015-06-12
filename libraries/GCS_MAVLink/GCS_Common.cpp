@@ -237,25 +237,19 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
 {
     Vector3f euler;
     struct Location loc;
-    if (ahrs.get_secondary_attitude(euler, 1) && ahrs.get_secondary_position(loc, 1)) {
-        NavEKF2 &ekf2 = ahrs.get_NavEKF2();
-        Vector3f pos;
-        float v1;
-        float v2;
-        float v3;
-        float v4;
-//        ekf2.getSwitchEstimate(v1,v2,v3,v4,ekf2.est_sel);
-        mavlink_msg_ahrs3_send(chan,
-                               euler.x,
-                               euler.y,
-                               euler.z,
-                               loc.alt*1.0e-2f,
-                               loc.lat,
-                               loc.lng,
-                               v1, v2, v3, v4);
-    }
-#endif
+    NavEKF2 &ekf2 = ahrs.get_NavEKF2();
+    ekf2.getEulerAngles(euler);
+    ekf2.getLLH(loc);
+    mavlink_msg_ahrs3_send(chan,
+                           euler.x,
+                           euler.y,
+                           euler.z,
+                           loc.alt*1.0e-2f,
+                           loc.lat,
+                           loc.lng,
+                           0, 0, 0, 0);
 }
+#endif
 
 /*
   handle a MISSION_REQUEST_LIST mavlink packet

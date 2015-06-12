@@ -749,7 +749,11 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
     case MSG_EKF_STATUS_REPORT:
 #if AP_AHRS_NAVEKF_AVAILABLE
         CHECK_PAYLOAD_SIZE(EKF_STATUS_REPORT);
-        plane.ahrs.get_NavEKF().send_status_report(chan);
+        if (plane.ahrs.get_ekf_use() == 3) {
+            plane.ahrs.get_NavEKF2().send_status_report(chan);
+        } else {
+            plane.ahrs.get_NavEKF().send_status_report(chan);
+        }
 #endif
         break;
 

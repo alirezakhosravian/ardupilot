@@ -371,12 +371,12 @@ const AP_Param::GroupInfo NavEKF2::var_info[] PROGMEM = {
     // @User: Advanced
     AP_GROUPINFO("ALT_SOURCE",    32, NavEKF2, _altSource, 1),
 
-    // @Param: EST_SEL
-    // @DisplayName: Selection of which predictor output to set to telemetry variables v1 to v4.
+    // @Param: VEL
+    // @DisplayName: Selection of which variable to set to telemetry variables v1 to v4.
     // @Description:
     // @Values:
     // @User: Advanced
-    AP_GROUPINFO("EST_SEL",      36, NavEKF2,  est_sel, 1),
+    AP_GROUPINFO("VSEL",      36, NavEKF2,  v_sel, 0),
 
     AP_GROUPEND
 };
@@ -3870,46 +3870,47 @@ bool NavEKF2::getPosNED(Vector3f &pos) const
     return false;
 }
 
-void NavEKF2::getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel)
+void NavEKF2::getSwitchV(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel)
 {
         if(sel == 0)
         {
-            Vector3f euler;
-            state.quat.to_euler(euler.x, euler.y, euler.z);
-            euler = euler - _ahrs->get_trim();
-            f1 = euler.x;
-            f2 = euler.y;
-            f3 = euler.z;
-            f4 = 0;
+            f1 = gpsPosNE.x + gpsPosGlitchOffsetNE.x;;
+            f2 = posDataPredicted.x;
+            f3 = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
+            f4 = posDataPredicted.y;
         }
         else if(sel == 1)
         {
-            struct Location tmp_loc;
-//            getLLH2(tmp_loc);
-            getLLH(tmp_loc);
-            f1 = tmp_loc.lat;
-            f2 = tmp_loc.lng;
-            f3 = tmp_loc.alt;
+            f1 = -hgtMea;
+            f2 = hgtDataPredicted;
+            f3 = 0;
             f4 = 0;
         }
         else if(sel == 2)
         {
-            f1 = state.position.x;
-            f2 = state.position.y;
-            f3 = state.position.z;
-            f4 = 0;
+            f1 = velNED.x;
+            f2 = velDataPredicted.x;
+            f3 = velNED.y;
+            f4 = velDataPredicted.y;
         }
         else if(sel == 3)
         {
-            f1 = state.velocity.x;
-            f2 = state.velocity.y;
-            f3 = state.velocity.z;
+            f1 = velNED.z;
+            f2 = velDataPredicted.z;
+            f3 = 0;
             f4 = 0;
+        }
+        else if(sel == 4)
+        {
+            f1 = magData.x;
+            f2 = magDataPredicted.x;
+            f3 = magData.y;
+            f4 = magDataPredicted.y;
         }
         else
         {
-            f1 = 0;
-            f2 = 0;
+            f1 = magData.z;
+            f2 = magDataPredicted.z;
             f3 = 0;
             f4 = 0;
         }

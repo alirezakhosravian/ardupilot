@@ -92,7 +92,7 @@ public:
     // Constructor
     NavEKF2(const AP_AHRS *ahrs, AP_Baro &baro, const RangeFinder &rng);
 
-    AP_Int8 est_sel;
+    AP_Int8 v_sel;
 
     AP_Predictors test_Predictor;
     AP_Predictors &get_Predictor(void) {
@@ -190,7 +190,7 @@ public:
     // return the Euler roll, pitch and yaw angle in radians
     void getEulerAngles(Vector3f &eulers) const;
 
-    void getSwitchEstimate(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
+    void getSwitchV(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
 
     // return the transformation matrix from XYZ (body) to NED axes
     void getRotationBodyToNED(Matrix3f &mat) const;

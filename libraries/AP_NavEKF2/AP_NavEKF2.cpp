@@ -1205,27 +1205,12 @@ void NavEKF2::UpdateStrapdownEquationsNED()
     ConstrainStates();
 
 
- /////////////////////////// Calling the Predictor Update Functions Every 20 ms ///////////////////////////////////////////////////////////
-//    Vector3f tilde_Vel;
-//    Vector3f corrected_tilde_Vel1;
-//    Vector3f corrected_tilde_Vel2;
+ /////////////////////////// Calling the Predictor Update Functions Every 20 ms ////////////////////////
     Vector3f corrected_tilde_Vel12;
     Vector3f tilde_q;
-
     tilde_q = correctedDelAng;
     corrected_tilde_Vel12 = correctedDelVel12;
-
-
-/*
-    corrected_tilde_Vel1 = dVelIMU11;
-    corrected_tilde_Vel2 = dVelIMU21;
-    corrected_tilde_Vel1.z -= state.accel_zbias1;
-    corrected_tilde_Vel2.z -= state.accel_zbias2;
-    corrected_tilde_Vel12 =  corrected_tilde_Vel1* IMU1_weighting +  corrected_tilde_Vel2* (1.0f - IMU1_weighting);
-*/
-
-    test_Predictor.UpdatePredictorStates(tilde_q, corrected_tilde_Vel12, state.velocity, dtIMUactual, imuSampleTime_ms);
-
+    ANU_Predictor.UpdatePredictorStates(tilde_q, corrected_tilde_Vel12, state.velocity, dtIMUactual, imuSampleTime_ms);  // Updating the predictor states.  // We can add predictors based on individual IMUs in future.
 
 }
 
@@ -2008,42 +1993,27 @@ void NavEKF2::FuseVelPosNED()
         // the accelerometers and we should disable the GPS and barometer innovation consistency checks.
         if (_fusionModeGPS == 0 && fuseVelData && (imuSampleTime_ms - lastHgtMeasTime) <  (2 * msecHgtAvg)) {
             // calculate innovations for height and vertical GPS vel measurements
-            //float hgtErr  = statesAtHgtTime.position.z - observation[5];
+            //float hgtErr  = statesAtHgtTime.position.z - observation[5];    // Old innovation term. Replaced below by a new innovation term.
 
+            // Obtaning the current prediction of height measurement using the Predictor.
             float temp_hgtMeas = observation[5];
-
-            uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-            if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                tmpHgtDelay = 60; // defualt value. I should change it later
-            }
-
-            test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
-            // printf("%u\n",imuSampleTime_ms);
-            // printf("%f and %f\n",observation[5],hgtDataPredicted);
-            float hgtErr  = statesAtHgtTime.position.z - hgtDataPredicted;
+            uint16_t tmpHgtDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay), 0, 500);
+            ANU_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
+            float hgtErr  = statesAtHgtTime.position.z - hgtDataPredicted;    // New innovation term based on predictor.
 
 
-            //float velDErr = statesAtVelTime.velocity.z - observation[2];
+            //float velDErr = statesAtVelTime.velocity.z - observation[2]; // Old innovation term. Replaced below by a new innovation term.
             Vector3f temp_velMeas;
-            temp_velMeas[0] = observation[0];
-            temp_velMeas[1] = observation[1];
-            temp_velMeas[2] = observation[2];
-
-            uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-            if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                tmpVelDelay = 200; // defualt value. I should change it later
-            }
-
+            temp_velMeas.x = observation[0];
+            temp_velMeas.y = observation[1];
+            temp_velMeas.z = observation[2];
+            uint16_t tmpVelDelay =  constrain_int16((uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay), 0, 500);
             state_elements temp_state;
-            RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+            RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));  // Obtaining the attitude at velocity measurement time.
             Quaternion temp_quat;
             temp_quat = temp_state.quat;
-            test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
-                    //printf("%u\n",imuSampleTime_ms);
-                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
-                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
-                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
-            float velDErr = statesAtVelTime.velocity.z - velDataPredicted[2];
+            ANU_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
+            float velDErr = statesAtVelTime.velocity.z - velDataPredicted.z;   // New innovation term based on predictor.
 
 
             // check if they are the same sign and both more than 3-sigma out of bounds
@@ -2058,25 +2028,16 @@ void NavEKF2::FuseVelPosNED()
         // test position measurements
         if (fusePosData) {
             // test horizontal position measurements
-            //innovVelPos[3] = statesAtPosTime.position.x - observation[3];
-            //innovVelPos[4] = statesAtPosTime.position.y - observation[4];
+            //innovVelPos[3] = statesAtPosTime.position.x - observation[3]; // Old innovation term. Replaced below by a new innovation term.
+            //innovVelPos[4] = statesAtPosTime.position.y - observation[4]; // Old innovation term. Replaced below by a new innovation term.
 
             Vector2f temp_posMeas;
             temp_posMeas.x = observation[3];
             temp_posMeas.y = observation[4];
-
-            uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
-            if (tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                tmpPosDelay = 200; // defualt value. I should change it later
-            }
-
-            test_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay);
-            // printf("%u\n",imuSampleTime_ms);
-            // printf("%f and %f\n",observation[3],observation[4]);
-            // printf("%f and %f\n",posDataPredicted.x,posDataPredicted.y);
-                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
-            innovVelPos[3] = statesAtPosTime.position.x - posDataPredicted.x;
-            innovVelPos[4] = statesAtPosTime.position.y - posDataPredicted.y;
+            uint16_t tmpPosDelay = constrain_int16((uint16_t) (imuSampleTime_ms - lastFixTime_ms + _msecPosDelay), 0, 500);
+            ANU_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay);  // Obtaining a prediction of current position.
+            innovVelPos[3] = statesAtPosTime.position.x - posDataPredicted.x;  // New innovation term based on predictor.
+            innovVelPos[4] = statesAtPosTime.position.y - posDataPredicted.y;  // New innovation term based on predictor.
 
 
             varInnovVelPos[3] = P[7][7] + R_OBS_DATA_CHECKS[3];
@@ -2134,32 +2095,22 @@ void NavEKF2::FuseVelPosNED()
                 // velocity states start at index 4
                 stateIndex   = i + 4;
                 // calculate innovations using blended and single IMU predicted states
-                //velInnov[i]  = statesAtVelTime.velocity[i] - observation[i]; // blended
-                //velInnov1[i] = statesAtVelTime.vel1[i] - observation[i]; // IMU1
-                //velInnov2[i] = statesAtVelTime.vel2[i] - observation[i]; // IMU2
+                //velInnov[i]  = statesAtVelTime.velocity[i] - observation[i]; // blended   // Old innovation term is replaced below with a new inovation based on the predictor.
+                //velInnov1[i] = statesAtVelTime.vel1[i] - observation[i]; // IMU1 // Old innovation term is replaced below with a new inovation based on the predictor.
+                //velInnov2[i] = statesAtVelTime.vel2[i] - observation[i]; // IMU2 // Old innovation term is replaced below with a new inovation based on the predictor.
                 Vector3f temp_velMeas;
-                temp_velMeas[0] = observation[0];
-                temp_velMeas[1] = observation[1];
-                temp_velMeas[2] = observation[2];
-
-                uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-                if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                    tmpVelDelay = 200; // defualt value. I should change it later
-                }
-
+                temp_velMeas.x = observation[0];
+                temp_velMeas.y = observation[1];
+                temp_velMeas.z = observation[2];
+                uint16_t tmpVelDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay), 0, 500);
                 state_elements temp_state;
-                RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+                RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));  // Obtaining the attitude at velocity measurement time.
                 Quaternion temp_quat;
                 temp_quat = temp_state.quat;
-                test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
-                    //printf("%u\n",imuSampleTime_ms);
-                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
-                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
-                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
-                velInnov[i]  = statesAtVelTime.velocity[i] - velDataPredicted[i]; // blended
-                velInnov1[i] = statesAtVelTime.vel1[i] - velDataPredicted[i]; // IMU1
-                velInnov2[i] = statesAtVelTime.vel2[i] - velDataPredicted[i]; // IMU2
-
+                ANU_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay); // Obtaining a prediction of current velocity.
+                velInnov[i]  = statesAtVelTime.velocity[i] - velDataPredicted[i]; // blended  // New innoation term based on the Predictor.
+                velInnov1[i] = statesAtVelTime.vel1[i] - velDataPredicted[i]; // IMU1  // New innoation term based on the Predictor
+                velInnov2[i] = statesAtVelTime.vel2[i] - velDataPredicted[i]; // IMU2  // New innoation term based on the Predictor
 
 
                 // calculate innovation variance
@@ -2212,19 +2163,12 @@ void NavEKF2::FuseVelPosNED()
         // test height measurements
         if (fuseHgtData) {
             // calculate height innovations
-            // innovVelPos[5] = statesAtHgtTime.position.z - observation[5];
+            // innovVelPos[5] = statesAtHgtTime.position.z - observation[5];  // Old innovation term is replaced below with a new innovation based on the predictor.
 
             float temp_hgtMeas = observation[5];
-
-            uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-            if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                tmpHgtDelay = 60; // defualt value. I should change it later
-            }
-
-            test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
-            // printf("%u\n",imuSampleTime_ms);
-            // printf("%f and %f\n",observation[5],hgtDataPredicted);
-            innovVelPos[5] = statesAtHgtTime.position.z - hgtDataPredicted;
+            uint16_t tmpHgtDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay), 0, 500);
+            ANU_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay); // Obtaining a prediction of current height
+            innovVelPos[5] = statesAtHgtTime.position.z - hgtDataPredicted;  // New innoation term based on the Predictor
 
 
             varInnovVelPos[5] = P[9][9] + R_OBS_DATA_CHECKS[5];
@@ -2278,65 +2222,46 @@ void NavEKF2::FuseVelPosNED()
                 // adjust scaling on GPS measurement noise variances if not enough satellites
                 if (obsIndex <= 2)
                 {
-                    //innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - observation[obsIndex];   // Old innovation term is replaced below with a new inovation based on the predictor.
 
                     Vector3f temp_velMeas;
-                    temp_velMeas[0] = observation[0];
-                    temp_velMeas[1] = observation[1];
-                    temp_velMeas[2] = observation[2];
-
-                    uint16_t tmpVelDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay);
-                    if (tmpVelDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                        tmpVelDelay = 200; // defualt value. I should change it later
-                    }
-
+                    temp_velMeas.x = observation[0];
+                    temp_velMeas.y = observation[1];
+                    temp_velMeas.z = observation[2];
+                    uint16_t tmpVelDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecVelDelay), 0, 500);
                     state_elements temp_state;
-                    RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500)));
+                    RecallStates(temp_state, (imuSampleTime_ms - constrain_int16(tmpVelDelay, 0, 500))); // Obtaining the attitude at position measurement time.
                     Quaternion temp_quat;
                     temp_quat = temp_state.quat;
-                    test_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay);
-                    //printf("%u\n",imuSampleTime_ms);
-                    //printf("%f and %f and %f\n",observation[0],observation[1],observation[2]);
-                    //printf("%f and %f and %f\n",velDataPredicted[0],velDataPredicted[1],velDataPredicted[2]);
-                    //printf("%f and %f and %f\n",statesAtVelTime.velocity[0],statesAtVelTime.velocity[1],statesAtVelTime.velocity[2]);
-                    innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - velDataPredicted[obsIndex];
+                    ANU_Predictor.VelPredictor(velDataPredicted, temp_velMeas, temp_quat, imuSampleTime_ms, tmpVelDelay); // Obtaining a prediction of current velocity..
+                    innovVelPos[obsIndex] = statesAtVelTime.velocity[obsIndex] - velDataPredicted[obsIndex];  // New innoation term based on the Predictor.
+
 
                     R_OBS[obsIndex] *= sq(gpsNoiseScaler);
                 }
                 else if (obsIndex == 3 || obsIndex == 4) {
-                    //innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - observation[obsIndex]; // Old innovation term is replaced below with a new inovation based on the predictor.
 
                     Vector2f temp_posMeas;
                     temp_posMeas.x = observation[3];
                     temp_posMeas.y = observation[4];
-
-                    uint16_t tmpPosDelay = (uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay);
-                    if (tmpPosDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                    tmpPosDelay = 200; // defualt value. I should change it later
-                    }
-
-                    test_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay);
+                    uint16_t tmpPosDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastFixTime_ms + _msecPosDelay), 0, 500);
+                    ANU_Predictor.PosNEPredictor(posDataPredicted, temp_posMeas, imuSampleTime_ms, tmpPosDelay); // Obtaining a prediction of current position.
                     if (obsIndex == 3) {
-                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.x;
+                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.x; // New innoation term based on the Predictor.
                     } else {  // obsIndex is 4 so we inject y element
-                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.y;
+                        innovVelPos[obsIndex] = statesAtPosTime.position[obsIndex-3] - posDataPredicted.y; // New innoation term based on the Predictor.
                     }
+
 
                     R_OBS[obsIndex] *= sq(gpsNoiseScaler);
                 } else {
-                    //innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - observation[obsIndex];
+                    //innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - observation[obsIndex];  // Old innovation term is replaced below with a new inovation based on the predictor.
 
                     float temp_hgtMeas = observation[5];
-
-                    uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-                    if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                        tmpHgtDelay = 60; // defualt value. I should change it later
-                    }
-
-                    test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
-                    // printf("%u\n",imuSampleTime_ms);
-                    // printf("%f and %f\n",observation[5],hgtDataPredicted);
-                    innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - hgtDataPredicted;
+                    uint16_t tmpHgtDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay), 0, 500);
+                    ANU_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay); // Obtaining a prediction of current height.
+                    innovVelPos[obsIndex] = statesAtHgtTime.position[obsIndex-3] - hgtDataPredicted;  // New innoation term based on the Predictor
 
 
                     if (obsIndex == 5) {
@@ -2402,21 +2327,14 @@ void NavEKF2::FuseVelPosNED()
                 // Correct states that have been predicted using single (not blended) IMU data
                 if (obsIndex == 5){
                     // Calculate height measurement innovations using single IMU states
-                    //float hgtInnov1 = statesAtHgtTime.posD1 - observation[obsIndex];
-                    //float hgtInnov2 = statesAtHgtTime.posD2 - observation[obsIndex];
+                    //float hgtInnov1 = statesAtHgtTime.posD1 - observation[obsIndex]; // Old innovation term is replaced below with a new inovation based on the predictor.
+                    //float hgtInnov2 = statesAtHgtTime.posD2 - observation[obsIndex]; // Old innovation term is replaced below with a new inovation based on the predictor.
 
                     float temp_hgtMeas = observation[5];
-
-                    uint16_t tmpHgtDelay = (uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay);
-                    if (tmpHgtDelay > 500){ // limite the maximum delay. also verify that tmpMagDelay is positive
-                        tmpHgtDelay = 60; // defualt value. I should change it later
-                    }
-
-                    test_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay);
-                    // printf("%u\n",imuSampleTime_ms);
-                    // printf("%f and %f\n",observation[5],hgtDataPredicted);
-                    float hgtInnov1 = statesAtHgtTime.posD1 - hgtDataPredicted;
-                    float hgtInnov2 = statesAtHgtTime.posD2 - hgtDataPredicted;
+                    uint16_t tmpHgtDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastHgtMeasTime + msecHgtDelay), 0, 500);
+                    ANU_Predictor.HgtPredictor(hgtDataPredicted, temp_hgtMeas, imuSampleTime_ms, tmpHgtDelay); // Obtaining a prediction of current height.
+                    float hgtInnov1 = statesAtHgtTime.posD1 - hgtDataPredicted;  // New innoation term based on the Predictor.
+                    float hgtInnov2 = statesAtHgtTime.posD2 - hgtDataPredicted;  // New innoation term based on the Predictor.
 
 
                     if (vehicleArmed) {
@@ -2794,16 +2712,12 @@ void NavEKF2::FuseMagnetometer()
         magFuseRequired = false;
     }
     // calculate the measurement innovation
-//    innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
+//    innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex]; // Old innovation term is replaced below with a new inovation based on the predictor.
 
-    uint16_t tmpMagDelay = (uint16_t) (imuSampleTime_ms-lastMagUpdate/1000 + msecMagDelay);
-    if (tmpMagDelay > 1000){ // limite the maximum delay. also verify that tmpMagDelay is positive
-        tmpMagDelay = 40; // defualt value. I should change it later
-    }
+    uint16_t tmpMagDelay = constrain_int16((uint16_t) (imuSampleTime_ms-lastMagUpdate/1000 + msecMagDelay), 0, 500);  // Since lastMagUpdate is in microseconds, we convert it to milliseconds first.
+    ANU_Predictor.VectorPredictor(magDataPredicted,magData,imuSampleTime_ms,tmpMagDelay);  // Obtaining a prediction of current megnetic field.
+    innovMag[obsIndex] = MagPred[obsIndex] - magDataPredicted[obsIndex];  // New innoation term based on the Predictor.
 
-//    printf("%u and %u and %u\n",imuSampleTime_ms,lastMagUpdate,tmpMagDelay);
-    test_Predictor.VectorPredictor(magDataPredicted,magData,imuSampleTime_ms,tmpMagDelay);
-    innovMag[obsIndex] = MagPred[obsIndex] - magDataPredicted[obsIndex];
 
     // calculate the innovation test ratio
     magTestRatio[obsIndex] = sq(innovMag[obsIndex]) / (sq(_magInnovGate) * varInnovMag[obsIndex]);
@@ -3870,37 +3784,39 @@ bool NavEKF2::getPosNED(Vector3f &pos) const
     return false;
 }
 
-void NavEKF2::getSwitchV(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel)
+// getSwitchV is a function to fill in the v1-v4 mavlink variables with the predictors variables. This is useful for verifying that
+// The predictor is converged before take-off.
+void NavEKF2::getSwitchV(float &f1,float &f2,float &f3,float &f4)
 {
-        if(sel == 0)
+        if(v_sel == 0)
         {
             f1 = gpsPosNE.x + gpsPosGlitchOffsetNE.x;;
             f2 = posDataPredicted.x;
             f3 = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
             f4 = posDataPredicted.y;
         }
-        else if(sel == 1)
+        else if(v_sel == 1)
         {
             f1 = -hgtMea;
             f2 = hgtDataPredicted;
             f3 = 0;
             f4 = 0;
         }
-        else if(sel == 2)
+        else if(v_sel == 2)
         {
             f1 = velNED.x;
             f2 = velDataPredicted.x;
             f3 = velNED.y;
             f4 = velDataPredicted.y;
         }
-        else if(sel == 3)
+        else if(v_sel == 3)
         {
             f1 = velNED.z;
             f2 = velDataPredicted.z;
             f3 = 0;
             f4 = 0;
         }
-        else if(sel == 4)
+        else if(v_sel == 4)
         {
             f1 = magData.x;
             f2 = magDataPredicted.x;
@@ -5412,26 +5328,24 @@ void NavEKF2::detectOptFlowTakeoff(void)
 }
 
 
-void NavEKF2::getTemp(Vector3f &retVec1, Vector3f &retVec2) const
+void NavEKF2::getPosNEDmp(Vector3f &retVec1, Vector3f &retVec2) const
 {
-
     retVec1.x = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
     retVec1.y = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
     retVec1.z = -hgtMea;
     retVec2.x = posDataPredicted.x;
     retVec2.y = posDataPredicted.y;
     retVec2.z = hgtDataPredicted;   // hgtDataPredicted is ctually a prediction of PD, not hight
-
 }
 
-void NavEKF2::getTemp2(Vector3f &retVec1, Vector3f &retVec2) const
+void NavEKF2::getVelNEDmp(Vector3f &retVec1, Vector3f &retVec2) const
 {
     retVec1 = velNED;
     retVec2 = velDataPredicted;
 
 }
 
-void NavEKF2::getTemp3(Vector3f &retVec1, Vector3f &retVec2) const
+void NavEKF2::getMagmp(Vector3f &retVec1, Vector3f &retVec2) const
 {
     retVec1 = magData;
     retVec2 = magDataPredicted;

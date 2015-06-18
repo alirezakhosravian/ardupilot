@@ -241,7 +241,7 @@ void GCS_MAVLINK::send_ahrs3(AP_AHRS_NavEKF &ahrs)
     ekf2.getEulerAngles(euler);
     ekf2.getLLH(loc);
     float v1, v2, v3, v4;
-    ekf2.getSwitchV(v1,v2,v3,v4,ekf2.v_sel);
+    ekf2.getSwitchV(v1,v2,v3,v4);
     mavlink_msg_ahrs3_send(chan,
                            euler.x,
                            euler.y,

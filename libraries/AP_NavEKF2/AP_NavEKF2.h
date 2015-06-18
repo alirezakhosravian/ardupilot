@@ -41,6 +41,7 @@
 #endif
 
 
+
 class AP_AHRS;
 
 class NavEKF2
@@ -94,9 +95,9 @@ public:
 
     AP_Int8 v_sel;
 
-    AP_Predictors test_Predictor;
+    AP_Predictors ANU_Predictor;
     AP_Predictors &get_Predictor(void) {
-        return test_Predictor;
+        return ANU_Predictor;
     }
 
 
@@ -114,9 +115,9 @@ public:
     // Check basic filter health metrics and return a consolidated health status
     bool healthy(void) const;
 
-    void getTemp(Vector3f &retVec1, Vector3f &retVec2) const;
-    void getTemp2(Vector3f &retVec1, Vector3f &retVec2) const;
-    void getTemp3(Vector3f &retVec1, Vector3f &retVec2) const;
+    void getPosNEDmp(Vector3f &retVec1, Vector3f &retVec2) const;  // Returns the current measured and predicted position in NED.
+    void getVelNEDmp(Vector3f &retVec1, Vector3f &retVec2) const;  // Returns the current measured and predicted velocity in NED.
+    void getMagmp(Vector3f &retVec1, Vector3f &retVec2) const;  // Returns the current measured and predicted magnetic field in body frame.
 
     // Return the last calculated NED position relative to the reference point (m).
     // If a calculated solution is not available, use the best available data and return false
@@ -190,7 +191,7 @@ public:
     // return the Euler roll, pitch and yaw angle in radians
     void getEulerAngles(Vector3f &eulers) const;
 
-    void getSwitchV(float &f1,float &f2,float &f3,float &f4,AP_Int8 &sel);
+    void getSwitchV(float &f1,float &f2,float &f3,float &f4);
 
     // return the transformation matrix from XYZ (body) to NED axes
     void getRotationBodyToNED(Matrix3f &mat) const;

@@ -1210,7 +1210,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
 	NavEKF2 &ekf2 = ahrs.get_NavEKF2();
     Vector3f vecTmp1;
     Vector3f vecTmp2;
-    ekf2.getTemp(vecTmp1,vecTmp2);
+    ekf2.getPosNEDmp(vecTmp1,vecTmp2);
     NavEKF &ekf = ahrs.get_NavEKF();
     struct Location locEKF;
     ekf.getLLH(locEKF);
@@ -1232,7 +1232,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     };
     WriteBlock(&pkt5, sizeof(pkt5));
 
-    ekf2.getTemp2(vecTmp1,vecTmp2);
+    ekf2.getVelNEDmp(vecTmp1,vecTmp2);
     struct log_ANU6 pkt6 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU6_MSG),
         time_us  : hal.scheduler->micros64(),
@@ -1245,7 +1245,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
     };
     WriteBlock(&pkt6, sizeof(pkt6));
 
-    ekf2.getTemp3(vecTmp1,vecTmp2);
+    ekf2.getMagmp(vecTmp1,vecTmp2);
     struct log_ANU7 pkt7 = {
         LOG_PACKET_HEADER_INIT(LOG_ANU7_MSG),
         time_us  : hal.scheduler->micros64(),

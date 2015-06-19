@@ -285,6 +285,10 @@ AP_InertialSensor::AP_InertialSensor() :
     _hil_mode(false),
     _calibrating(false),
     _log_raw_data(false),
+#if INS_VIBRATION_CHECK
+    _accel_vibe_floor_filter(AP_INERTIAL_SENSOR_ACCEL_VIBE_FLOOR_FILT_HZ),
+    _accel_vibe_filter(AP_INERTIAL_SENSOR_ACCEL_VIBE_FILT_HZ),
+#endif
     _dataflash(NULL)
 {
     AP_Param::setup_object_defaults(this, var_info);        
@@ -294,6 +298,9 @@ AP_InertialSensor::AP_InertialSensor() :
     for (uint8_t i=0; i<INS_MAX_INSTANCES; i++) {
         _accel_error_count[i] = 0;
         _gyro_error_count[i] = 0;
+#if INS_VIBRATION_CHECK
+        _accel_clip_count[i] = 0;
+#endif
     }
     memset(_delta_velocity_valid,0,sizeof(_delta_velocity_valid));
     memset(_delta_angle_valid,0,sizeof(_delta_angle_valid));
@@ -639,6 +646,17 @@ AP_InertialSensor::init_gyro()
     // save calibration
     _save_parameters();
 }
+
+#if INS_VIBRATION_CHECK
+// accelerometer clipping reporting
+uint32_t AP_InertialSensor::get_accel_clip_count(uint8_t instance) const
+{
+    if (instance >= get_accel_count()) {
+        return 0;
+    }
+    return _accel_clip_count[instance];
+}
+#endif
 
 // get_gyro_health_all - return true if all gyros are healthy
 bool AP_InertialSensor::get_gyro_health_all(void) const
@@ -1254,7 +1272,12 @@ check_sample:
     }
 
     now = hal.scheduler->micros();
-    _delta_time = (now - _last_sample_usec) * 1.0e-6f;
+    if (_hil_mode && _hil.delta_time > 0) {
+        _delta_time = _hil.delta_time;
+        _hil.delta_time = 0;
+    } else {
+        _delta_time = (now - _last_sample_usec) * 1.0e-6f;
+    }
     _last_sample_usec = now;
 
 #if 0
@@ -1277,6 +1300,51 @@ check_sample:
 
     _have_sample = true;
 }
+
+
+/*
+  get delta angles
+ */
+bool AP_InertialSensor::get_delta_angle(uint8_t i, Vector3f &delta_angle) const 
+{
+    if (_delta_angle_valid[i]) {
+        delta_angle = _delta_angle[i];
+        return true;
+    } else if (get_gyro_health(i)) {
+        // provide delta angle from raw gyro, so we use the same code
+        // at higher level
+        delta_angle = get_gyro(i) * get_delta_time();
+        return true;
+    }
+    return false;
+}
+
+/*
+  get delta velocity if available
+*/
+bool AP_InertialSensor::get_delta_velocity(uint8_t i, Vector3f &delta_velocity) const
+{
+    if (_delta_velocity_valid[i]) {
+        delta_velocity = _delta_velocity[i];
+        return true;
+    } else if (get_accel_health(i)) {
+        delta_velocity = get_accel(i) * get_delta_time();
+        return true;
+    }
+    return false;
+}
+
+/*
+  return delta_time for the delta_velocity
+ */
+float AP_InertialSensor::get_delta_velocity_dt(uint8_t i) const
+{
+    if (_delta_velocity_valid[i]) {
+        return _delta_velocity_dt[i];
+    }
+    return get_delta_time();
+}
+
 
 /*
   support for setting accel and gyro vectors, for use by HIL
@@ -1318,3 +1386,71 @@ void AP_InertialSensor::set_gyro(uint8_t instance, const Vector3f &gyro)
     }
 }
 
+/*
+  set delta time for next ins.update()
+ */
+void AP_InertialSensor::set_delta_time(float delta_time)
+{
+    _hil.delta_time = delta_time;
+}
+
+/*
+  set delta velocity for next update
+ */
+void AP_InertialSensor::set_delta_velocity(uint8_t instance, float deltavt, const Vector3f &deltav)
+{
+    if (instance < INS_MAX_INSTANCES) {
+        _delta_velocity_valid[instance] = true;
+        _delta_velocity[instance] = deltav;
+        _delta_velocity_dt[instance] = deltavt;
+    }
+}
+
+/*
+  set delta angle for next update
+ */
+void AP_InertialSensor::set_delta_angle(uint8_t instance, const Vector3f &deltaa)
+{
+    if (instance < INS_MAX_INSTANCES) {
+        _delta_angle_valid[instance] = true;
+        _delta_angle[instance] = deltaa;
+    }
+}
+
+#if INS_VIBRATION_CHECK
+// calculate vibration levels and check for accelerometer clipping (called by a backends)
+void AP_InertialSensor::calc_vibration_and_clipping(uint8_t instance, const Vector3f &accel, float dt)
+{
+    // check for clipping
+    if (fabsf(accel.x) > AP_INERTIAL_SENSOR_ACCEL_CLIP_THRESH_MSS ||
+        fabsf(accel.y) > AP_INERTIAL_SENSOR_ACCEL_CLIP_THRESH_MSS ||
+        fabsf(accel.z) > AP_INERTIAL_SENSOR_ACCEL_CLIP_THRESH_MSS) {
+        _accel_clip_count[instance]++;
+    }
+
+    // calculate vibration on primary accel only
+    if (instance != _primary_accel) {
+        return;
+    }
+
+    // filter accel a 5hz
+    Vector3f accel_filt = _accel_vibe_floor_filter.apply(accel, dt);
+
+    // calc difference from this sample and 5hz filtered value, square and filter at 2hz
+    Vector3f accel_diff = (accel - accel_filt);
+    accel_diff.x *= accel_diff.x;
+    accel_diff.y *= accel_diff.y;
+    accel_diff.z *= accel_diff.z;
+    _accel_vibe_filter.apply(accel_diff, dt);
+}
+
+// retrieve latest calculated vibration levels
+Vector3f AP_InertialSensor::get_vibration_levels() const
+{
+    Vector3f vibe = _accel_vibe_filter.get();
+    vibe.x = safe_sqrt(vibe.x);
+    vibe.y = safe_sqrt(vibe.y);
+    vibe.z = safe_sqrt(vibe.z);
+    return vibe;
+}
+#endif

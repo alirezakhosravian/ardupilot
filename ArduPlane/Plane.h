@@ -436,6 +436,15 @@ private:
         // denotes if a go-around has been commanded for landing
         bool commanded_go_around:1;
 
+        // Altitude threshold to complete a takeoff command in autonomous modes.  Centimeters
+        // are we in idle mode? used for balloon launch to stop servo
+        // movement until altitude is reached
+        bool idle_mode:1;
+
+        // used to 'wiggle' servos in idle mode to prevent them freezing
+        // at high altitudes
+        uint8_t idle_wiggle_stage;
+
         // Altitude threshold to complete a takeoff command in autonomous
         // modes.  Centimeters above home
         int32_t takeoff_altitude_rel_cm;
@@ -454,7 +463,7 @@ private:
         float next_turn_angle {90};
 
         // filtered sink rate for landing
-        float land_sink_rate;
+        float sink_rate;
 
         // time when we first pass min GPS speed on takeoff
         uint32_t takeoff_speed_time_ms;
@@ -732,6 +741,7 @@ private:
     bool verify_wait_delay();
     bool verify_change_alt();
     bool verify_within_distance();
+    bool verify_altitude_wait(const AP_Mission::Mission_Command &cmd);
     void do_loiter_at_location();
     void do_take_picture();
     void log_picture();
@@ -743,6 +753,7 @@ private:
     void reset_control_switch();
     void autotune_start(void);
     void autotune_restore(void);
+    void autotune_enable(bool enable);
     bool fly_inverted(void);
     void failsafe_short_on_event(enum failsafe_state fstype);
     void failsafe_long_on_event(enum failsafe_state fstype);
@@ -854,6 +865,7 @@ private:
     void terrain_update(void);
     void update_flight_mode(void);
     void stabilize();
+    void set_servos_idle(void);
     void set_servos();
     void update_aux();
     void determine_is_flying(void);
@@ -893,6 +905,7 @@ private:
     void do_loiter_unlimited(const AP_Mission::Mission_Command& cmd);
     void do_loiter_turns(const AP_Mission::Mission_Command& cmd);
     void do_loiter_time(const AP_Mission::Mission_Command& cmd);
+    void do_altitude_wait(const AP_Mission::Mission_Command& cmd);
     void do_continue_and_change_alt(const AP_Mission::Mission_Command& cmd);
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);

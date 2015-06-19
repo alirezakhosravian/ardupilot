@@ -733,7 +733,7 @@ void NavEKF::UpdateFilter()
 
     // sum delta angles and time used by covariance prediction
     summedDelAng = summedDelAng + correctedDelAng;
-    summedDelVel = summedDelVel + correctedDelVel1;
+    summedDelVel = summedDelVel + correctedDelVel12;
     dt += dtIMUactual;
 
     // perform a covariance prediction if the total delta angle has exceeded the limit
@@ -874,7 +874,7 @@ void NavEKF::SelectVelPosFusion()
 
     // If we haven't received height data for a while, then declare the height data as being timed out
     // set timeout period based on whether we have vertical GPS velocity available to constrain drift
-    hgtRetryTime = (_fusionModeGPS == 0 && !velTimeout) ? hgtRetryTimeMode0 : hgtRetryTimeMode12;
+    hgtRetryTime = (useGpsVertVel && !velTimeout) ? hgtRetryTimeMode0 : hgtRetryTimeMode12;
     if (imuSampleTime_ms - lastHgtMeasTime > hgtRetryTime) {
         hgtTimeout = true;
     }
@@ -1974,7 +1974,7 @@ void NavEKF::FuseVelPosNED()
         // if vertical GPS velocity data is being used, check to see if the GPS vertical velocity and barometer
         // innovations have the same sign and are outside limits. If so, then it is likely aliasing is affecting
         // the accelerometers and we should disable the GPS and barometer innovation consistency checks.
-        if (_fusionModeGPS == 0 && fuseVelData && (imuSampleTime_ms - lastHgtMeasTime) <  (2 * msecHgtAvg)) {
+        if (useGpsVertVel && fuseVelData && (imuSampleTime_ms - lastHgtMeasTime) <  (2 * msecHgtAvg)) {
             // calculate innovations for height and vertical GPS vel measurements
             float hgtErr  = statesAtHgtTime.position.z - observation[5];
             float velDErr = statesAtVelTime.velocity.z - observation[2];
@@ -2124,7 +2124,7 @@ void NavEKF::FuseVelPosNED()
         }
 
         // set range for sequential fusion of velocity and position measurements depending on which data is available and its health
-        if (fuseVelData && _fusionModeGPS == 0 && velHealth && !constPosMode && PV_AidingMode == AID_ABSOLUTE) {
+        if (fuseVelData && useGpsVertVel && velHealth && !constPosMode && PV_AidingMode == AID_ABSOLUTE) {
             fuseData[0] = true;
             fuseData[1] = true;
             fuseData[2] = true;
@@ -4037,12 +4037,8 @@ bool NavEKF::readDeltaVelocity(uint8_t ins_index, Vector3f &dVel, float &dVel_dt
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
     if (ins_index < ins.get_accel_count()) {
-        if (ins.get_delta_velocity(ins_index,dVel)) {
-            dVel_dt = ins.get_delta_velocity_dt(ins_index);
-        } else {
-            dVel = ins.get_accel(ins_index) * dtIMUactual;
-            dVel_dt = dtIMUactual;
-        }
+        ins.get_delta_velocity(ins_index,dVel);
+        dVel_dt = ins.get_delta_velocity_dt(ins_index);
         return true;
     }
     return false;
@@ -4052,9 +4048,7 @@ bool NavEKF::readDeltaAngle(uint8_t ins_index, Vector3f &dAng) {
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
     if (ins_index < ins.get_gyro_count()) {
-        if (!ins.get_delta_angle(ins_index,dAng)) {
-            dAng = ins.get_gyro(ins_index) * dtIMUactual;
-        }
+        ins.get_delta_angle(ins_index,dAng);
         return true;
     }
     return false;
@@ -4066,7 +4060,7 @@ void NavEKF::readIMUData()
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
     dtIMUavg = 1.0f/ins.get_sample_rate();
-    dtIMUactual = max(ins.get_delta_time(),1.0e-3f);
+    dtIMUactual = max(ins.get_delta_time(),1.0e-4f);
 
     // the imu sample time is used as a common time reference throughout the filter
     imuSampleTime_ms = hal.scheduler->millis();
@@ -4146,11 +4140,10 @@ void NavEKF::readGpsData()
         }
 
         // Check if GPS can output vertical velocity and set GPS fusion mode accordingly
-        if (!_ahrs->get_gps().have_vertical_velocity()) {
-            // vertical velocity should not be fused
-            if (_fusionModeGPS == 0) {
-                _fusionModeGPS = 1;
-            }
+        if (_ahrs->get_gps().have_vertical_velocity() && _fusionModeGPS == 0) {
+            useGpsVertVel = true;
+        } else {
+            useGpsVertVel = false;
         }
 
         // Monitor quality of the GPS velocity data for alignment
@@ -4784,7 +4777,7 @@ void  NavEKF::getFilterStatus(nav_filter_status &status) const
     bool doingWindRelNav = !tasTimeout && assume_zero_sideslip();
     bool doingNormalGpsNav = !posTimeout && (PV_AidingMode == AID_ABSOLUTE);
     bool notDeadReckoning = !constVelMode && !constPosMode;
-    bool someVertRefData = (!velTimeout && (_fusionModeGPS == 0)) || !hgtTimeout;
+    bool someVertRefData = (!velTimeout && useGpsVertVel) || !hgtTimeout;
     bool someHorizRefData = !(velTimeout && posTimeout && tasTimeout) || doingFlowNav;
     bool optFlowNavPossible = flowDataValid && (_fusionModeGPS == 3);
     bool gpsNavPossible = !gpsNotAvailable && (_fusionModeGPS <= 2);

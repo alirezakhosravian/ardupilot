@@ -58,6 +58,7 @@
 #include <VehicleType.h>
 #include <getopt.h> // for optind only
 #include <utility/getopt_cpp.h>
+#include <MsgHandler.h>
 
 #ifndef INT16_MIN
 #define INT16_MIN -32768
@@ -65,6 +66,7 @@
 #endif
 
 #include "LogReader.h"
+#include "DataFlashFileReader.h"
 
 #define streq(x, y) (!strcmp(x, y))
 
@@ -111,11 +113,14 @@ private:
     bool done_parameters;
     bool done_baro_init;
     bool done_home_init;
-    uint16_t update_rate = 50;
+    uint16_t update_rate = 0;
     int32_t arm_time_ms = -1;
     bool ahrs_healthy;
-    bool have_imu2;
-    bool have_fram;
+    bool have_imu2 = false;
+    bool have_imt = false;
+    bool have_imt2 = false;
+    bool have_fram = false;
+    bool use_imt = true;
 
     void _parse_command_line(uint8_t argc, char * const argv[]);
 
@@ -194,6 +199,7 @@ void Replay::usage(void)
     ::printf("\t--accel-mask MASK  set accel mask (1=accel1 only, 2=accel2 only, 3=both)\n");
     ::printf("\t--gyro-mask MASK   set gyro mask (1=gyro1 only, 2=gyro2 only, 3=both)\n");
     ::printf("\t--arm-time time    arm at time (milliseconds)\n");
+    ::printf("\t--no-imt           don't use IMT data\n");
 }
 
 void Replay::_parse_command_line(uint8_t argc, char * const argv[])
@@ -206,6 +212,7 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
         {"accel-mask",      true,   0, 'a'},
         {"gyro-mask",       true,   0, 'g'},
         {"arm-time",        true,   0, 'A'},
+        {"no-imt",          false,  0, 'n'},
         {0, false, 0, 0}
     };
 
@@ -235,6 +242,11 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
             arm_time_ms = strtol(gopt.optarg, NULL, 0);
             break;
 
+        case 'n':
+            use_imt = false;
+            logreader.set_use_imt(use_imt);
+            break;
+
         case 'p':
             const char *eq = strchr(gopt.optarg, '=');
             if (eq == NULL) {
@@ -261,6 +273,88 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
     }
 }
 
+class IMU2Counter : public DataFlashFileReader {
+public:
+    IMU2Counter() {}
+    bool handle_log_format_msg(const struct log_Format &f);
+    bool handle_msg(const struct log_Format &f, uint8_t *msg);
+
+    uint64_t last_imu2_timestamp;
+private:
+    MsgHandler *handler;
+};
+bool IMU2Counter::handle_log_format_msg(const struct log_Format &f) {
+    if (!strncmp(f.name,"IMU2",4)) {
+        // an IMU2 message
+        handler = new MsgHandler(f);
+    }
+
+    return true;
+};
+bool IMU2Counter::handle_msg(const struct log_Format &f, uint8_t *msg) {
+    if (strncmp(f.name,"IMU2",4)) {
+        // not an IMU2 message
+        return true;
+    }
+
+    if (handler->field_value(msg, "TimeUS", last_imu2_timestamp)) {
+//        ::printf("Found timestamp %ld\n", last_imu2_timestamp);
+    } else if (handler->field_value(msg, "TimeMS", last_imu2_timestamp)) {
+//        ::printf("Found millisecond timestamp %ld\n", last_imu2_timestamp);
+        last_imu2_timestamp *= 1000;
+    } else {
+        ::printf("Unable to find timestamp in IMU2 message");
+    }
+    return true;
+}
+
+int find_update_rate(const char *filename) {
+    IMU2Counter reader;
+    if (!reader.open_log(filename)) {
+        perror(filename);
+        exit(1);
+    }
+    int samplecount = 0;
+    uint64_t prev = 0;
+    uint64_t samplesum = 0;
+    prev = 0;
+    while (samplecount < 10) {
+        char type[5];
+        if (!reader.update(type)) {
+            break;
+        }
+        if (streq(type, "IMU2")) {
+            if (prev == 0) {
+                prev = reader.last_imu2_timestamp;
+            } else {
+                samplecount++;
+                samplesum += reader.last_imu2_timestamp - prev;
+                prev = reader.last_imu2_timestamp;
+            }
+        }
+    }
+    if (samplecount < 10) {
+        ::printf("Unable to determine log rate - insufficient IMU2 messages?!");
+        exit(1);
+    }
+
+    float rate = 1000000/int(samplesum/samplecount);
+    if (abs(rate - 50) < 5) {
+        return 50;
+    }
+    if (abs(rate - 100) < 10) {
+        return 100;
+    }
+    if (abs(rate - 200) < 10) {
+        return 200;
+    }
+    if (abs(rate - 400) < 20) { // I have a log which is 10 off...
+        return 400;
+    }
+    ::printf("Unable to determine log rate - %f matches no rate\n", rate);
+    exit(1);
+}
+
 void Replay::setup()
 {
     ::printf("Starting\n");
@@ -273,6 +367,11 @@ void Replay::setup()
     _parse_command_line(argc, argv);
 
     hal.console->printf("Processing log %s\n", filename);
+
+    if (update_rate == 0) {
+        update_rate = find_update_rate(filename);
+    }
+
     hal.console->printf("Using an update rate of %u Hz\n", update_rate);
 
     load_parameters();
@@ -386,6 +485,12 @@ void Replay::read_sensors(const char *type)
     if (streq(type,"IMU2")) {
         have_imu2 = true;
     }
+    if (use_imt && streq(type,"IMT")) {
+        have_imt = true;
+    }
+    if (use_imt && streq(type,"IMT2")) {
+        have_imt2 = true;
+    }
 
     if (streq(type,"GPS")) {
         gps.update();
@@ -414,8 +519,16 @@ void Replay::read_sensors(const char *type)
         run_ahrs = true;
     }
 
+    if (have_imt) {
+        if ((streq(type,"IMT") && !have_imt2) ||
+            (streq(type,"IMT2") && have_imt2)) {
+            run_ahrs = true;
+        }
+    }
+
     // special handling of IMU messages as these trigger an ahrs.update()
     if (!have_fram && 
+        !have_imt &&
         ((streq(type,"IMU") && !have_imu2) || (streq(type, "IMU2") && have_imu2))) {
         run_ahrs = true;
     }

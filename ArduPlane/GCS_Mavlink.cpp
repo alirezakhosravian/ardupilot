@@ -775,6 +775,11 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
         CHECK_PAYLOAD_SIZE(PID_TUNING);
         plane.send_pid_tuning(chan);
         break;
+
+    case MSG_VIBRATION:
+        CHECK_PAYLOAD_SIZE(VIBRATION);
+        send_vibration(plane.ins);
+        break;
     }
     return true;
 }
@@ -1009,6 +1014,7 @@ GCS_MAVLINK::data_stream_send(void)
         send_message(MSG_OPTICAL_FLOW);
         send_message(MSG_EKF_STATUS_REPORT);
         send_message(MSG_GIMBAL_REPORT);
+        send_message(MSG_VIBRATION);
     }
 }
 
@@ -1346,6 +1352,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             }
             break;
         }
+
+        case MAV_CMD_DO_AUTOTUNE_ENABLE:
+            // param1 : enable/disable
+            plane.autotune_enable(packet.param1);
+            break;
 
         default:
             break;

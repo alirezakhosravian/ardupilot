@@ -1318,10 +1318,10 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs)
         v2x    : (float)(vecTmp2.x),
         v2y    : (float)(vecTmp2.y),
         v2z    : (float)(vecTmp2.z),
-        Elat   : (float)(locEKF.lat),
-        Elng   : (float)(locEKF.lng),
-        Alat   : (float)(locANU.lat),
-        Alng   : (float)(locANU.lng)
+        Elat   : locEKF.lat,
+        Elng   : locEKF.lng,
+        Alat   : locANU.lat,
+        Alng   : locANU.lng
     };
     WriteBlock(&pkt5, sizeof(pkt5));
 

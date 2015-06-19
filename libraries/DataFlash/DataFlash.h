@@ -471,10 +471,10 @@ struct PACKED log_ANU5 {
     float v2x;
     float v2y;
     float v2z;
-    float Elat;
-    float Elng;
-    float Alat;
-    float Alng;
+    int32_t Elat;
+    int32_t Elng;
+    int32_t Alat;
+    int32_t Alng;
 };
 
 
@@ -785,7 +785,7 @@ Format characters in the format string for binary log messages
     { LOG_ANU4_MSG, sizeof(log_ANU4), \
       "ANU4","QcccccccbbBBH","TimeUS,SV,SP,SH,SMX,SMY,SMZ,SVT,OFN,EFE,FS,TS,SS" }, \
     { LOG_ANU5_MSG, sizeof(log_ANU5), \
-      "ANU5","Qffffffffff","TimeUS,PNm,PEm,PDm,PNp,PEp,PDp,Elat,Elng,Alat,Alng" }, \
+      "ANU5","QffffffLLLL","TimeUS,PNm,PEm,PDm,PNp,PEp,PDp,Elat,Elng,Alat,Alng" }, \
     { LOG_ANU6_MSG, sizeof(log_ANU6), \
       "ANU6","Qffffff","TimeUS,VNm,VEm,VDm,VNp,VEp,VDp" }, \
     { LOG_ANU7_MSG, sizeof(log_ANU7), \
